@@ -24,9 +24,10 @@ void print_in_middle(WINDOW *win, int y, int startx, int width, char *string, ch
     refresh();
 }
 
-void set_item_name (ITEM *item, const char* name)
+void set_item_name(ITEM *item, const char* name)
 {   
     item->name.str = name;
+    item->name.length = strlen(name);
 }
 
 void refresh_menu(WINDOW *my_win, MENU *menu)
@@ -49,11 +50,16 @@ void refresh_menu(WINDOW *my_win, MENU *menu)
 }
 
 
-char *choice_interactive(size_t branch_count, size_t current_branch_index, char **branch_index, size_t *delete_branch_mark)
+char *choice_interactive(
+        size_t branch_count,
+        size_t current_branch_index,
+        char **branch_index,
+        char **branch_index_hint,
+        size_t *delete_branch_mark)
 {
     ITEM **items = NULL, *tmp_item = NULL;
     int c;
-    size_t choice;
+    size_t choice = 0;
     MENU *menu;
     WINDOW *win;
     initscr();
@@ -125,8 +131,18 @@ char *choice_interactive(size_t branch_count, size_t current_branch_index, char 
 
             case 'd':
             case 'D':
-                set_item_name(current_item(menu), "deleted!");
-                set_current_item(menu, current_item(menu));
+                choice = item_index(current_item(menu));
+                delete_branch_mark[choice] = ~delete_branch_mark[choice];
+                if(delete_branch_mark[choice])
+                {
+                    strcpy(branch_index_hint[choice], branch_index[choice]);
+                    strcat(branch_index_hint[choice], " - deleted");
+                    set_item_name(current_item(menu), branch_index_hint[choice]);
+                }
+                else
+                    set_item_name(current_item(menu), branch_index[choice]);
+
+                /* set_current_item(menu, current_item(menu)); */
                 refresh_menu(win, menu);
                 break;
 
@@ -238,9 +254,11 @@ int parse_raw_output_of_git_branch(char *raw_buf, size_t *current_branch_index, 
     size_t branch_count = 0;
     size_t max_branch_size = base_branch_size;
     char **branch_index = calloc(base_branch_size, sizeof(char*));
+    char **dup_branch_index = calloc(base_branch_size, sizeof(char*));
 
     /* update the address pointed to by input_buf*/
     *input_buf = branch_index;
+    *dup_input_buf = dup_branch_index;
 
     char *char_ptr = raw_buf;
     char *branch_name_start = NULL;
@@ -266,6 +284,7 @@ int parse_raw_output_of_git_branch(char *raw_buf, size_t *current_branch_index, 
         {
             *char_ptr = '\0';
             branch_index[branch_count] = calloc(sizeof(char), strlen(branch_name_start)+1);
+            dup_branch_index[branch_count] = calloc(sizeof(char), strlen(branch_name_start)+1+256);
             strcpy(branch_index[branch_count++], branch_name_start);
             /* printf("found branch: %s\n", branch_index[branch_count-1]); */
             branch_not_found = true;
@@ -274,6 +293,7 @@ int parse_raw_output_of_git_branch(char *raw_buf, size_t *current_branch_index, 
             {
                 max_branch_size *= 2;
                 *input_buf = branch_index = realloc(branch_index, max_branch_size*sizeof(char*));
+                *dup_input_buf = dup_branch_index = realloc(dup_branch_index, max_branch_size*sizeof(char*));
                 /* printf("branch count > max branch size, realloc branch size: %ld\n", max_branch_size); */
             }
         }
@@ -340,7 +360,7 @@ int main()
     get_all_branch_name(&branch_count, &current_branch_index, &branch_index, &branch_index_hint);
 
     size_t *delete_branch_mark = calloc(branch_count, sizeof(size_t));
-    char *choice_branch_name = choice_interactive(branch_count, current_branch_index, branch_index, delete_branch_mark);
+    char *choice_branch_name = choice_interactive(branch_count, current_branch_index, branch_index, branch_index_hint, delete_branch_mark);
 
     switch_branch(choice_branch_name);
 
@@ -348,9 +368,14 @@ int main()
     for(size_t i=0; i<branch_count; i++)
         if(branch_index[i])
             free(branch_index[i]);
-
     if(branch_index)
         free(branch_index);
+
+    for(size_t i=0; i<branch_count; i++)
+        if(branch_index_hint[i])
+            free(branch_index_hint[i]);
+    if(branch_index_hint)
+        free(branch_index_hint);
 
     if(delete_branch_mark)
         free(delete_branch_mark);
