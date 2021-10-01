@@ -6,8 +6,11 @@
 #include <stdbool.h>
 
 #define ROW_NUM 20
-#define COL_NUM 54
+#define COL_NUM 64
 #define WIN_MENU_DIFF_ROW 6
+
+#define _CASE(a, ...) case a: CASE(__VA_ARGS__)
+#define CASE(...)  _CASE(__VA_ARGS__)
 
 void print_in_middle(WINDOW *win, int y, int startx, int width, char *string, chtype color) {
     int x;
@@ -28,6 +31,8 @@ void set_item_name(ITEM *item, const char* name)
 {   
     item->name.str = name;
     item->name.length = strlen(name);
+    item->description.str = name;
+    item->description.length = strlen(name);
 }
 
 void refresh_menu(WINDOW *my_win, MENU *menu)
@@ -57,11 +62,14 @@ char *choice_interactive(
         char **branch_index_hint,
         size_t *delete_branch_mark)
 {
-    ITEM **items = NULL, *tmp_item = NULL;
-    int c;
-    size_t choice = 0;
     MENU *menu;
     WINDOW *win;
+    ITEM **items = NULL, *tmp_item = NULL;
+
+    int c;
+    size_t choice = 0;
+    bool checkout_branch = false;
+
     initscr();
     start_color();
     cbreak();
@@ -86,24 +94,16 @@ char *choice_interactive(
     { 
         switch(c)
         {
-            case 'j':
-            case 'J':
-            case KEY_DOWN:
+            CASE('i', 'j', KEY_DOWN)
                 menu_driver(menu, REQ_DOWN_ITEM);
                 break;
-            case 'k':
-            case 'K':
-            case KEY_UP:
+            case 'k': case 'K': case KEY_UP:
                 menu_driver(menu, REQ_UP_ITEM);
                 break;
-            case 'h':
-            case 'H':
-            case KEY_LEFT:
+            case 'h': case 'H': case KEY_LEFT:
                 menu_driver(menu, REQ_LEFT_ITEM);
                 break;
-            case 'l':
-            case 'L':
-            case KEY_RIGHT:
+            case 'l': case 'L': case KEY_RIGHT:
                 menu_driver(menu, REQ_RIGHT_ITEM);
                 break;
             case 'm':
@@ -122,11 +122,8 @@ char *choice_interactive(
                 clrtoeol();
                 mvprintw(LINES - 3, 0, "%s", item_name(tmp_item));
                 refresh();
+                checkout_branch = true;
                 goto exit;
-                break;
-
-            case 'r':
-                set_current_item(menu, items[4]); // 可用于跳转
                 break;
 
             case 'd':
@@ -135,20 +132,28 @@ char *choice_interactive(
                 delete_branch_mark[choice] = ~delete_branch_mark[choice];
                 if(delete_branch_mark[choice])
                 {
+                    char *delete_mark_str = " [deleted]";
                     strcpy(branch_index_hint[choice], branch_index[choice]);
-                    strcat(branch_index_hint[choice], " - deleted");
+                    strcat(branch_index_hint[choice], delete_mark_str);
                     set_item_name(current_item(menu), branch_index_hint[choice]);
                 }
                 else
                     set_item_name(current_item(menu), branch_index[choice]);
 
-                /* set_current_item(menu, current_item(menu)); */
+                unpost_menu(menu);
+                free_menu(menu);
+                menu = new_menu(items);
+                set_current_item(menu, items[choice]);
                 refresh_menu(win, menu);
                 break;
 
             case 'q':case 'Q': case 67:
                 goto exit;
         }
+
+        if(c == 'd')
+            set_current_item(menu, items[choice]);
+
         wrefresh(win);
     }
 
@@ -160,7 +165,7 @@ exit:
     free(items);
     endwin();
 
-    return branch_index[choice];
+    return checkout_branch ? branch_index[choice] : NULL;
 }
 
 bool is_space(int arg)
