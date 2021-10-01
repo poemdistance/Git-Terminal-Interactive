@@ -1,1 +1,1 @@
-# GitTerminalInteractive
+# Git Terminal Interactive
