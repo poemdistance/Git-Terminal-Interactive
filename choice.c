@@ -61,7 +61,8 @@ void refresh_menu(WINDOW *win, MENU *menu)
     mvprintw(LINES-14, 90, "r: remove selected branch from remote");
     mvprintw(LINES-13, 90, "k: key up");
     mvprintw(LINES-12, 90, "j: key down");
-    mvprintw(LINES-11, 90, "q: exit and commit all operation");
+    mvprintw(LINES-11, 90, "a: drop/abort all operation and exit");
+    mvprintw(LINES-10, 90, "q: commit all operation and exit");
     refresh();
 
     post_menu(menu);
@@ -165,6 +166,7 @@ char *choice_interactive(
     keypad(win, TRUE);
 
     refresh_menu(win, menu);
+    set_current_item(menu, items[current_branch_index]);
 
     while((c = wgetch(win)) != KEY_F(1))
     { 
@@ -202,9 +204,8 @@ char *choice_interactive(
                 refresh();
                 checkout_branch = true;
                 goto exit;
-                break;
 
-            case 'a': case 27: // ESC
+            case 'a': /* case 27: // ESC  */
                 *drop_operation = true;
                 goto exit;
 
