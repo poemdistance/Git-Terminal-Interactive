@@ -68,28 +68,44 @@ void bit_reverse(size_t *target, size_t bit)
     *target = *target ^ bit;
 }
 
-void concat_extra_msg(char *src, char *extra_msg, size_t extra_size)
+bool get_and_reset_bit(size_t *src, size_t bit)
 {
-
+    bool is_set = *src & bit;
+    *src = *src & (~bit);
+    return is_set;
 }
 
-void set_branch_hint(MENU *menu, char *branch, char *branch_hint, size_t operation_mark)
+void concat_extra_msg(char **src, char *extra_msg, size_t *origin_extra_size, size_t new_extra_size)
+{
+    if(new_extra_size > *origin_extra_size)
+    {
+        size_t new_size = (*origin_extra_size * 2) + new_extra_size;
+        *src = realloc(*src, new_size);
+        *origin_extra_size = new_size;
+    }
+
+    strcat(*src, extra_msg);
+}
+
+void set_branch_hint(MENU *menu, char *branch, char *branch_hint, size_t *branch_hint_extra_size, size_t operation_mark)
 {
     strcpy(branch_hint, branch);
-    size_t extra_hint_size = 0;
+    size_t new_extra_hint_size = 0;
     char *del_local_hint = " [del-local]";
     char *del_remote_hint = " [del-remote]";
 
+    strcpy(branch_hint, branch);
+
     if(operation_mark & DELETE_LOCAL_BRANCH_BIT)
     {
-        extra_hint_size += strlen(del_local_hint);
-        strcat(branch_hint, " [local-del]");
+        new_extra_hint_size += strlen(del_local_hint);
+        concat_extra_msg(&branch_hint, del_local_hint, branch_hint_extra_size, new_extra_hint_size);
     }
 
     if(operation_mark & DELETE_REMOTE_BRANCH_BIT)
     {
-        extra_hint_size += strlen(del_remote_hint);
-        strcat(branch_hint, " [remote-del]");
+        new_extra_hint_size += strlen(del_remote_hint);
+        concat_extra_msg(&branch_hint, del_remote_hint, branch_hint_extra_size, new_extra_hint_size);
     }
 
     set_item_name(current_item(menu), branch_hint);
@@ -109,7 +125,6 @@ char *choice_interactive(
 
     int c;
     size_t choice = 0;
-    size_t operation_mark = 0;
     bool checkout_branch = false;
     bool need_to_refresh_menu = false;
 
@@ -173,13 +188,11 @@ char *choice_interactive(
 
             case 'd': case 'D':
                 need_to_refresh_menu = true;
-                operation_mark |= DELETE_LOCAL_BRANCH_BIT;
-                bit_reverse(&(branch_operation_mark[choice]), operation_mark);
+                bit_reverse(&(branch_operation_mark[choice]), DELETE_LOCAL_BRANCH_BIT);
                 break;
             case 'r': case 'R':
                 need_to_refresh_menu = true;
-                operation_mark |= DELETE_REMOTE_BRANCH_BIT;
-                bit_reverse(&(branch_operation_mark[choice]), operation_mark);
+                bit_reverse(&(branch_operation_mark[choice]), DELETE_REMOTE_BRANCH_BIT);
                 break;
 
             case 'q':case 'Q': case 67:
@@ -189,7 +202,13 @@ char *choice_interactive(
         if(need_to_refresh_menu)
         {
             need_to_refresh_menu = false;
-            set_branch_hint(menu, branch_index[choice], branch_index_hint[choice], branch_operation_mark[choice]);
+
+            set_branch_hint(menu,
+                    branch_index[choice],
+                    branch_index_hint[choice],
+                    &(branch_index_hint_extra_size[choice]),
+                    branch_operation_mark[choice]);
+
             repost_menu(&menu, items);
             refresh_menu(win, menu);
             set_current_item(menu, items[choice]);
@@ -338,9 +357,12 @@ int parse_raw_output_of_git_branch(char *raw_buf,
         {
             *char_ptr = '\0';
             branch_index[branch_count] = calloc(sizeof(char), strlen(branch_name_start)+1);
-            dup_branch_index[branch_count] = calloc(sizeof(char), strlen(branch_name_start)+1+BRANCH_EXTRA_HINT_SIZE);
+            dup_branch_index[branch_count] = calloc(sizeof(char), strlen(branch_name_start) + 1 + BRANCH_EXTRA_HINT_SIZE);
+            dup_branch_index_extra_size[branch_count] = BRANCH_EXTRA_HINT_SIZE;
             strcpy(branch_index[branch_count++], branch_name_start);
+
             /* printf("found branch: %s\n", branch_index[branch_count-1]); */
+
             branch_not_found = true;
 
             if(branch_count == max_branch_size)
@@ -410,6 +432,8 @@ void switch_branch(char *choice_branch_name)
     if(!choice_branch_name)
         return;
 
+    printf("switch_branch: %s\n", choice_branch_name);
+
     char *branch_name_start = get_real_branch_name(choice_branch_name);
     char *git_command = "git checkout ";
     char *command = calloc(sizeof(char), strlen(branch_name_start) + strlen(git_command) + 1);
@@ -422,7 +446,7 @@ void switch_branch(char *choice_branch_name)
     free(command);
 }
 
-void delete_local_branch( char **branch_index, size_t branch_count, size_t *branch_operation_mark)
+void delete_branch( char **branch_index, size_t branch_count, size_t *branch_operation_mark)
 {
     char *delete_branch_name = NULL;
     char *git_command = NULL;
@@ -431,26 +455,34 @@ void delete_local_branch( char **branch_index, size_t branch_count, size_t *bran
     char *command = NULL;
     for(size_t i=0; i<branch_count; i++)
     {
+        printf("operation_mark: %ld\n", branch_operation_mark[i]);
+
         if(!branch_operation_mark[i])
             continue;
 
-        if(branch_operation_mark[i] & DELETE_LOCAL_BRANCH_BIT)
-            git_command = delete_local_branch_command;
-        else if(branch_operation_mark[i] & DELETE_REMOTE_BRANCH_BIT)
-            git_command = delete_remote_branch_command;
-
-        if(!git_command)
+        for(short bit=0; bit<64; bit++)
         {
-            fprintf(stderr, "git command nil pointer error, branch_operation_mark: %ld", branch_operation_mark[i]);
-            continue;
-        }
+            if(get_and_reset_bit(&(branch_operation_mark[i]), DELETE_LOCAL_BRANCH_BIT))
+                git_command = delete_local_branch_command;
+            else if(get_and_reset_bit(&(branch_operation_mark[i]), DELETE_REMOTE_BRANCH_BIT))
+                git_command = delete_remote_branch_command;
 
-        delete_branch_name = get_real_branch_name(branch_index[i]);
-        command = calloc(sizeof(char), strlen(git_command) + strlen(delete_branch_name + 1));
-        strcat(command, git_command);
-        strcat(command, delete_branch_name);
-        system(command);
-        free(command);
+            if(!git_command)
+            {
+                fprintf(stderr, "git command nil pointer error, branch_operation_mark: %ld", branch_operation_mark[i]);
+                continue;
+            }
+
+            delete_branch_name = get_real_branch_name(branch_index[i]);
+            command = calloc(sizeof(char), strlen(git_command) + strlen(delete_branch_name + 1));
+            strcat(command, git_command);
+            strcat(command, delete_branch_name);
+            
+            system(command);
+            free(command);
+
+            git_command = NULL;
+        }
     }
 }
 
@@ -471,7 +503,7 @@ int main()
                 branch_operation_mark);
 
     switch_branch(choice_branch_name);
-    delete_local_branch(branch_index, branch_count, branch_operation_mark);
+    delete_branch(branch_index, branch_count, branch_operation_mark);
 
     /* clean resources*/
     for(size_t i=0; i<branch_count; i++)
