@@ -460,7 +460,7 @@ void delete_branch( char **branch_index, size_t branch_count, size_t *branch_ope
 
         for(short bit=0; bit<64; bit++)
         {
-            /* not operation mark, break to check next branch*/
+            /* no operation mark, break to check next branch*/
             if(!branch_operation_mark[i])
                 break;
 
