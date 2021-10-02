@@ -44,23 +44,23 @@ void repost_menu(MENU **menu, ITEM **items)
     *menu = new_menu(items);
 }
 
-void refresh_menu(WINDOW *my_win, MENU *menu)
+void refresh_menu(WINDOW *win, MENU *menu)
 {
-    set_menu_win(menu, my_win);
-    set_menu_sub(menu, derwin(my_win, ROW_NUM-WIN_MENU_DIFF_ROW, COL_NUM-5, 4, 2));
+    set_menu_win(menu, win);
+    set_menu_sub(menu, derwin(win, ROW_NUM-WIN_MENU_DIFF_ROW, COL_NUM-5, 4, 2));
     set_menu_mark(menu, "-> ");
     menu_opts_off(menu, O_SHOWDESC);
     menu_opts_off(menu, O_ONEVALUE);
     set_menu_format(menu, ROW_NUM-WIN_MENU_DIFF_ROW, 1); // row, column
 
-    box(my_win, 0, 0);
-    print_in_middle(my_win, 1, 0, 50, "Git Branch Tools", COLOR_PAIR(0));
-    mvwhline(my_win, 2, 1, ACS_HLINE, COL_NUM-2);
+    box(win, 0, 0);
+    print_in_middle(win, 1, 0, 50, "Git Branch Tools", COLOR_PAIR(0));
+    mvwhline(win, 2, 1, ACS_HLINE, COL_NUM-2);
     mvprintw(LINES - 2, 0, "Q/q to exit");
     refresh();
 
     post_menu(menu);
-    wrefresh(my_win);
+    wrefresh(win);
 }
 
 void bit_reverse(size_t *target, size_t bit)
