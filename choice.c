@@ -9,9 +9,6 @@
 #define COL_NUM 64
 #define WIN_MENU_DIFF_ROW 6
 
-#define _CASE(a, ...) case a: CASE(__VA_ARGS__)
-#define CASE(...)  _CASE(__VA_ARGS__)
-
 void print_in_middle(WINDOW *win, int y, int startx, int width, char *string, chtype color) {
     int x;
 
@@ -94,7 +91,7 @@ char *choice_interactive(
     { 
         switch(c)
         {
-            CASE('i', 'j', KEY_DOWN)
+            case 'i': case 'j': case KEY_DOWN:
                 menu_driver(menu, REQ_DOWN_ITEM);
                 break;
             case 'k': case 'K': case KEY_UP:
