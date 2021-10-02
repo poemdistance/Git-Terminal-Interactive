@@ -54,7 +54,7 @@ void refresh_menu(WINDOW *win, MENU *menu)
     set_menu_format(menu, ROW_NUM-WIN_MENU_DIFF_ROW, 1); // row, column
 
     box(win, 0, 0);
-    print_in_middle(win, 1, 0, 50, "Git Branch Tools", COLOR_PAIR(0));
+    print_in_middle(win, 1, 0, COL_NUM, "Git Branch Tools", COLOR_PAIR(0));
     mvwhline(win, 2, 1, ACS_HLINE, COL_NUM-2);
     mvprintw(LINES - 2, 0, "Q/q to exit");
     refresh();
