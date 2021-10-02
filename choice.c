@@ -478,6 +478,13 @@ void delete_branch( char **branch_index, size_t branch_count, size_t *branch_ope
             }
 
             delete_branch_name = get_real_branch_name(branch_index[i]);
+
+            if(git_command == delete_local_branch_command && branch_index[i][0] == '*')
+            {
+                fprintf(stderr, "delete current local branch is forbbiden, skipping...");
+                continue;
+            }
+
             command = calloc(sizeof(char), strlen(git_command) + strlen(delete_branch_name + 1));
             strcat(command, git_command);
             strcat(command, delete_branch_name);
