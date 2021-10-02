@@ -68,9 +68,9 @@ void bit_reverse(size_t *target, size_t bit)
     *target = *target ^ bit;
 }
 
-bool get_and_reset_bit(size_t *src, size_t bit)
+size_t get_and_reset_bit(size_t *src, size_t bit)
 {
-    bool is_set = *src & bit;
+    size_t is_set = *src & bit;
     *src = *src & (~bit);
     return is_set;
 }
@@ -455,22 +455,24 @@ void delete_branch( char **branch_index, size_t branch_count, size_t *branch_ope
     char *command = NULL;
     for(size_t i=0; i<branch_count; i++)
     {
-        printf("operation_mark: %ld\n", branch_operation_mark[i]);
-
         if(!branch_operation_mark[i])
             continue;
 
         for(short bit=0; bit<64; bit++)
         {
-            if(get_and_reset_bit(&(branch_operation_mark[i]), DELETE_LOCAL_BRANCH_BIT))
-                git_command = delete_local_branch_command;
-            else if(get_and_reset_bit(&(branch_operation_mark[i]), DELETE_REMOTE_BRANCH_BIT))
-                git_command = delete_remote_branch_command;
+            printf("operation_mark: %ld\n", branch_operation_mark[i]);
 
-            if(!git_command)
+            switch(get_and_reset_bit(&(branch_operation_mark[i]), 1 << bit))
             {
-                fprintf(stderr, "git command nil pointer error, branch_operation_mark: %ld", branch_operation_mark[i]);
-                continue;
+                case DELETE_LOCAL_BRANCH_BIT:
+                    git_command = delete_local_branch_command;
+                    break;
+                case DELETE_REMOTE_BRANCH_BIT:
+                    git_command = delete_remote_branch_command;
+                    break;
+                default:
+                    fprintf(stderr, "git command nil pointer error, branch_operation_mark: %ld", branch_operation_mark[i]);
+                    continue;
             }
 
             delete_branch_name = get_real_branch_name(branch_index[i]);
@@ -480,8 +482,6 @@ void delete_branch( char **branch_index, size_t branch_count, size_t *branch_ope
             
             system(command);
             free(command);
-
-            git_command = NULL;
         }
     }
 }
