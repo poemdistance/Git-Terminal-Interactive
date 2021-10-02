@@ -229,7 +229,8 @@ int get_raw_output_from_git_branch(char **input_buf)
             read_buf[read_size] = '\0';
 
             strcpy(raw_buf+offset, read_buf);
-            /* printf("No more text found from pipeline, %d %d\n", read_size < sizeof(read_buf), read_buf[sizeof(read_buf)-1] == '\0'); */
+            /* printf("No more text found from pipeline, %d %d\n",\ */
+            /*     read_size < sizeof(read_buf), read_buf[sizeof(read_buf)-1] == '\0'); */
             break;
         }
 
@@ -238,7 +239,8 @@ int get_raw_output_from_git_branch(char **input_buf)
         {
             current_raw_size *= 2;
             *input_buf = raw_buf = realloc(raw_buf, current_raw_size);
-            /* printf("raw_buff is no more space to hold the pipeline text, alloc large memory, realloc size: %zu\n", current_raw_size); */
+            /* printf("raw_buff: no more space to hold the pipeline text, alloc large memory, realloc size: %zu\n",\ */
+            /*         current_raw_size); */
         }
 
         strcpy(raw_buf+offset, read_buf);
@@ -320,30 +322,37 @@ int get_all_branch_name(size_t *branch_count, size_t *current_branch_index, char
     return 0;
 }
 
+char *get_real_branch_name(char *str)
+{
+    if(str[0] != '*')
+        return str;
+
+    /* pointer to the position after character '*' */
+    char *char_ptr = str + 1;
+    char *branch_name_start = char_ptr;
+    while(*char_ptr)
+    {
+        if(is_space(*char_ptr) )
+        {
+            char_ptr++;
+            continue;
+        }
+
+        branch_name_start = char_ptr;
+        break;
+    }
+
+    return branch_name_start;
+}
+
 void switch_branch(char *choice_branch_name)
 {
     if(!choice_branch_name)
         return;
 
-    char *branch_name_start = choice_branch_name;
-    if(choice_branch_name[0] == '*')
-    {
-        char *char_ptr = choice_branch_name + 1;
-        while(*char_ptr)
-        {
-            if(is_space(*char_ptr) )
-            {
-                char_ptr++;
-                continue;
-            }
-
-            branch_name_start = char_ptr;
-            break;
-        }
-    }
-
+    char *branch_name_start = get_real_branch_name(choice_branch_name);
     char *git_command = "git checkout ";
-    char *command = calloc(sizeof(char), strlen(branch_name_start)+strlen(git_command)+1);
+    char *command = calloc(sizeof(char), strlen(branch_name_start) + strlen(git_command) + 1);
 
     strcat(command, git_command);
     strcat(command, branch_name_start);
@@ -351,6 +360,25 @@ void switch_branch(char *choice_branch_name)
     system(command);
 
     free(command);
+}
+
+void delete_local_branch( char **branch_index, size_t branch_count, size_t *delete_branch_mark)
+{
+    char *delete_branch_name = NULL;
+    char *git_command = "git branch -D ";
+    char *command = NULL;
+    for(size_t i=0; i<branch_count; i++)
+    {
+        if(!delete_branch_mark[i])
+            continue;
+
+        delete_branch_name = get_real_branch_name(branch_index[i]);
+        command = calloc(sizeof(char), strlen(git_command) + strlen(delete_branch_name + 1));
+        strcat(command, git_command);
+        strcat(command, delete_branch_name);
+        system(command);
+        free(command);
+    }
 }
 
 int main()
@@ -362,9 +390,12 @@ int main()
     get_all_branch_name(&branch_count, &current_branch_index, &branch_index, &branch_index_hint);
 
     size_t *delete_branch_mark = calloc(branch_count, sizeof(size_t));
-    char *choice_branch_name = choice_interactive(branch_count, current_branch_index, branch_index, branch_index_hint, delete_branch_mark);
+
+    char *choice_branch_name 
+        = choice_interactive(branch_count, current_branch_index, branch_index, branch_index_hint, delete_branch_mark);
 
     switch_branch(choice_branch_name);
+    delete_local_branch(branch_index, branch_count, delete_branch_mark);
 
     /* clean resources*/
     for(size_t i=0; i<branch_count; i++)
