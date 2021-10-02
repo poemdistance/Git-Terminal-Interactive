@@ -56,7 +56,12 @@ void refresh_menu(WINDOW *win, MENU *menu)
     box(win, 0, 0);
     print_in_middle(win, 1, 0, COL_NUM, "Git Branch Tools", COLOR_PAIR(0));
     mvwhline(win, 2, 1, ACS_HLINE, COL_NUM-2);
-    mvprintw(LINES - 2, 0, "Q/q to exit");
+    mvprintw(LINES-16, 90, "o: checkout to selected branch");
+    mvprintw(LINES-15, 90, "d: delete selected branch from local");
+    mvprintw(LINES-14, 90, "r: remove selected branch from remote");
+    mvprintw(LINES-13, 90, "k: key up");
+    mvprintw(LINES-12, 90, "j: key down");
+    mvprintw(LINES-11, 90, "q: exit and commit all operation");
     refresh();
 
     post_menu(menu);
@@ -124,6 +129,7 @@ void set_branch_hint(MENU *menu,
 }
 
 char *choice_interactive(
+        bool *drop_operation,
         size_t branch_count,
         size_t current_branch_index,
         char **branch_index,
@@ -155,7 +161,7 @@ char *choice_interactive(
     menu = new_menu((ITEM **)items);
 
     /* newwin(int nlines, int ncols, int begin_y, int begin_x)*/
-    win = newwin(ROW_NUM, COL_NUM, 8, 13);
+    win = newwin(ROW_NUM, COL_NUM, 5, 12);
     keypad(win, TRUE);
 
     refresh_menu(win, menu);
@@ -187,7 +193,7 @@ char *choice_interactive(
             case ' ':
                 menu_driver(menu, REQ_TOGGLE_ITEM);
                 break;
-            case 'o': case 'O': case 10:
+            case 'o': case 'O': case 10: // enter key
                 tmp_item = current_item(menu);
                 choice = item_index(tmp_item);
                 move(LINES - 3, 0);
@@ -197,6 +203,10 @@ char *choice_interactive(
                 checkout_branch = true;
                 goto exit;
                 break;
+
+            case 'a': case 27: // ESC
+                *drop_operation = true;
+                goto exit;
 
             case 'd': case 'D':
                 need_to_refresh_menu = true;
@@ -236,6 +246,9 @@ exit:
         free_item(items[i]);
     free(items);
     endwin();
+
+    if(*drop_operation)
+        return NULL;
 
     return checkout_branch ? branch_index[choice] : NULL;
 }
@@ -524,6 +537,7 @@ int main()
     size_t branch_count = 0;
     size_t current_branch_index = 0;
     size_t *branch_index_hint_extra_size = NULL;
+    bool drop_operation = false;
 
     get_all_branch_name(&branch_count,
             &current_branch_index,
@@ -534,12 +548,24 @@ int main()
     size_t *branch_operation_mark = calloc(branch_count, sizeof(size_t));
 
     char *choice_branch_name 
-        = choice_interactive(branch_count, current_branch_index,
+        = choice_interactive(&drop_operation, branch_count, current_branch_index,
                 branch_index, branch_index_hint, branch_index_hint_extra_size,
                 branch_operation_mark);
 
+    if(drop_operation)
+        goto exit;
+    else
+        goto commint_operation;
+
+
+commint_operation:
+
+    printf("commint operation.\n");
+
     switch_branch(choice_branch_name);
     delete_branch(branch_index, branch_count, branch_operation_mark);
+
+exit:
 
     /* clean resources*/
     for(size_t i=0; i<branch_count; i++)
