@@ -1,1 +1,7 @@
 choice
+cscope.po.out
+tags
+cscope.out
+cscope.in.out
+a.out
+test.c
