@@ -478,6 +478,11 @@ char *get_real_branch_name(char *str)
     return branch_name_start;
 }
 
+void update_remote_references()
+{
+    system("git fetch --all --prune");
+}
+
 void switch_branch(char *choice_branch_name)
 {
     if(!choice_branch_name)
