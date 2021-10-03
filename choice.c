@@ -62,7 +62,10 @@ void refresh_menu(WINDOW *win, MENU *menu)
     mvprintw(LINES-13, 90, "k: key up");
     mvprintw(LINES-12, 90, "j: key down");
     mvprintw(LINES-11, 90, "a: drop/abort all operation and exit");
-    mvprintw(LINES-10, 90, "q: commit all operation and exit");
+    mvprintw(LINES-10, 90, "g: jump to fist branch");
+    mvprintw(LINES-9, 90, "G: jump to last branch");
+    mvprintw(LINES-8, 90,  "q/enter: exit and commit all operation");
+
     refresh();
 
     post_menu(menu);
@@ -164,7 +167,6 @@ char *choice_interactive(
     /* newwin(int nlines, int ncols, int begin_y, int begin_x)*/
     win = newwin(ROW_NUM, COL_NUM, 5, 12);
     keypad(win, TRUE);
-
     refresh_menu(win, menu);
     set_current_item(menu, items[current_branch_index]);
 
@@ -174,17 +176,27 @@ char *choice_interactive(
 
         switch(c)
         {
-            case 'i': case 'j': case KEY_DOWN:
+            case 'j': case 'J': case KEY_DOWN:
+                if(item_index(current_item(menu)) == branch_count-1)
+                {
+                    set_current_item(menu, items[0]);
+                    break;
+                }
                 menu_driver(menu, REQ_DOWN_ITEM);
                 break;
             case 'k': case 'K': case KEY_UP:
+                if(item_index(current_item(menu)) == 0)
+                {
+                    set_current_item(menu, items[branch_count-1]);
+                    break;
+                }
                 menu_driver(menu, REQ_UP_ITEM);
                 break;
-            case 'h': case 'H': case KEY_LEFT:
-                menu_driver(menu, REQ_LEFT_ITEM);
+            case 'G':
+                menu_driver(menu, REQ_LAST_ITEM);
                 break;
-            case 'l': case 'L': case KEY_RIGHT:
-                menu_driver(menu, REQ_RIGHT_ITEM);
+            case 'g':
+                menu_driver(menu, REQ_FIRST_ITEM);
                 break;
             case 'm':
                 menu_driver(menu, REQ_SCR_DPAGE);
@@ -195,7 +207,7 @@ char *choice_interactive(
             case ' ':
                 menu_driver(menu, REQ_TOGGLE_ITEM);
                 break;
-            case 'o': case 'O': case 10: // enter key
+            case 'o': case 'O':
                 tmp_item = current_item(menu);
                 choice = item_index(tmp_item);
                 move(LINES - 3, 0);
@@ -205,7 +217,11 @@ char *choice_interactive(
                 checkout_branch = true;
                 goto exit;
 
-            case 'a': /* case 27: // ESC  */
+            case 10:
+                goto exit;
+
+            case 'a': /*case 27: // ESC */
+
                 *drop_operation = true;
                 goto exit;
 
