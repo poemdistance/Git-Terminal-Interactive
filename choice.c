@@ -145,6 +145,7 @@ char *choice_interactive(
     size_t choice = 0;
     bool checkout_branch = false;
     bool need_to_refresh_menu = false;
+    size_t last_position = branch_count - 1;
 
     initscr();
     start_color();
@@ -172,17 +173,36 @@ char *choice_interactive(
 
         switch(c)
         {
-            case 'i': case 'j': case KEY_DOWN:
+            case 'j': case 'J': case KEY_DOWN:
+                if(item_index(current_item(menu)) == branch_count-1)
+                {
+                    set_current_item(menu, items[0]);
+                    break;
+                }
                 menu_driver(menu, REQ_DOWN_ITEM);
                 break;
             case 'k': case 'K': case KEY_UP:
+                if(item_index(current_item(menu)) == 0)
+                {
+                    set_current_item(menu, items[branch_count-1]);
+                    break;
+                }
                 menu_driver(menu, REQ_UP_ITEM);
                 break;
-            case 'h': case 'H': case KEY_LEFT:
+            case 'h': case KEY_LEFT:
+                menu_driver(menu, REQ_LEFT_ITEM);
+                break;
+            case 'H':
                 menu_driver(menu, REQ_LEFT_ITEM);
                 break;
             case 'l': case 'L': case KEY_RIGHT:
                 menu_driver(menu, REQ_RIGHT_ITEM);
+                break;
+            case 'G':
+                set_current_item(menu, items[branch_count-1]);
+                break;
+            case 'g':
+                set_current_item(menu, items[0]);
                 break;
             case 'm':
                 menu_driver(menu, REQ_SCR_DPAGE);
@@ -204,7 +224,7 @@ char *choice_interactive(
                 goto exit;
                 break;
 
-            case 'a': case 27: // ESC
+            case 'a': /*case 27: // ESC */
                 *drop_operation = true;
                 goto exit;
 
