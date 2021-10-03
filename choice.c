@@ -65,6 +65,7 @@ void refresh_menu(WINDOW *win, MENU *menu)
     mvprintw(LINES-10, 90, "g: jump to fist branch");
     mvprintw(LINES-9, 90, "G: jump to last branch");
     mvprintw(LINES-8, 90,  "q/enter: exit and commit all operation");
+
     refresh();
 
     post_menu(menu);
@@ -220,6 +221,7 @@ char *choice_interactive(
                 goto exit;
 
             case 'a': /*case 27: // ESC */
+
                 *drop_operation = true;
                 goto exit;
 
