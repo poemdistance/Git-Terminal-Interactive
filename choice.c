@@ -12,7 +12,30 @@
 #define DELETE_LOCAL_BRANCH_BIT     (1<<0)
 #define DELETE_REMOTE_BRANCH_BIT    (1<<1)
 
+#define LOCAL_BRANCH_INTERACTION    (1<<0)
+#define REMOTE_BRANCH_INTERACTION   (1<<1)
+
+#define DELETE_BRANCH_INTERACTION   (1<<0)
+#define HELP_MSG                    (1<<1)
+
+#define ARGUMENT_FIRST        (1<<0)
+#define OPTION_FRIST          (1<<1)
+
 #define BRANCH_EXTRA_HINT_SIZE (1024)
+
+#define TYPE_EXECUTE_FILE   (1<<0)
+#define TYPE_PARAMETER      (1<<1)
+#define TYPE_OPTION         (1<<2)
+
+typedef struct {
+    size_t branch_count;
+    char **branch_index;
+    char **branch_index_hint;
+    size_t *branch_index_hint_extra_size;
+    size_t current_branch_index;
+    size_t *branch_operation_mark;
+    bool drop_operation;
+} BranchInfo;
 
 void print_in_middle(WINDOW *win, int y, int startx, int width, char *string, chtype color) {
     int x;
@@ -63,8 +86,8 @@ void refresh_menu(WINDOW *win, MENU *menu)
     mvprintw(LINES-12, 90, "j: key down");
     mvprintw(LINES-11, 90, "a: drop/abort all operation and exit");
     mvprintw(LINES-10, 90, "g: jump to fist branch");
-    mvprintw(LINES-9, 90, "G: jump to last branch");
-    mvprintw(LINES-8, 90,  "q/enter: exit and commit all operation");
+    mvprintw(LINES-9,  90, "G: jump to last branch");
+    mvprintw(LINES-8,  90, "q/enter: exit and commit all operation");
 
     refresh();
 
@@ -82,6 +105,11 @@ size_t get_and_reset_bit(size_t *src, size_t bit)
     size_t is_set = *src & bit;
     *src = *src & (~bit);
     return is_set;
+}
+
+size_t get_bit(size_t src, size_t bit)
+{
+    return (src & bit);
 }
 
 void concat_extra_msg(char **src, char *extra_msg, size_t *origin_extra_size, size_t new_extra_size)
@@ -389,7 +417,7 @@ int parse_raw_output_of_git_branch_r(char *raw_buf,
         }
         else if(branch_not_found)
         {
-            branch_name_start = char_ptr + sizeof("origin/")-1; /* 注意减去'\0'字符占用的长度1*/
+            branch_name_start = char_ptr + sizeof("origin/")-1; /* substract the lenght of charater '\0'*/
             branch_not_found = false;
             if(current_branch_index != NULL && *branch_name_start == '*')
                 *current_branch_index = branch_count;
@@ -519,20 +547,23 @@ int parse_raw_output_of_git_branch(char *raw_buf,
     return branch_count;
 }
 
-int get_all_branch_name(size_t *branch_count,
-        size_t *current_branch_index,
-        char ***branch_index,
-        char ***branch_index_hint,
-        size_t **branch_index_hint_extra_size)
+int get_all_branch_name(
+        char *get_branch_command,
+        int(*parse_raw_output)(char*, size_t*, char***, char***, size_t**),
+        BranchInfo *branch_info)
 {
     char *raw_buf = NULL;
-    get_raw_output_from_git_branch("git branch", &raw_buf);
+    get_raw_output_from_git_branch(get_branch_command, &raw_buf);
 
-    *branch_count = parse_raw_output_of_git_branch(raw_buf,
-            current_branch_index,
-            branch_index,
-            branch_index_hint,
-            branch_index_hint_extra_size);
+    branch_info->branch_count = parse_raw_output(
+            raw_buf,
+            &(branch_info->current_branch_index),
+            &(branch_info->branch_index),
+            &(branch_info->branch_index_hint),
+            &(branch_info->branch_index_hint_extra_size));
+
+    branch_info->branch_operation_mark 
+        = calloc(branch_info->branch_count, sizeof(size_t));
 
     free(raw_buf);
 
@@ -567,63 +598,15 @@ void update_remote_references()
     system("git fetch --all --prune");
 }
 
-void remote_branch_interation()
+void command_execute(char *base_command, char *parameter)
 {
-    update_remote_references();
-
-    char *remote_branch = NULL;
-    char **branch_index = NULL;
-    char **branch_index_hint = NULL;
-    size_t *branch_index_hint_extra_size = NULL;
-    get_raw_output_from_git_branch("git branch -r", &remote_branch);
-
-
-    size_t branch_count = parse_raw_output_of_git_branch_r(remote_branch,
-            NULL,
-            &branch_index,
-            &branch_index_hint,
-            &branch_index_hint_extra_size);
-
-    free(remote_branch);
-
-    /* clean resources*/
-    for(size_t i=0; i<branch_count; i++)
-        if(branch_index[i])
-        {
-            printf("remote branch [%ld]: %s\n", i, branch_index[i]);
-            free(branch_index[i]);
-        }
-    if(branch_index)
-        free(branch_index);
-
-    for(size_t i=0; i<branch_count; i++)
-        if(branch_index_hint[i])
-            free(branch_index_hint[i]);
-    if(branch_index_hint)
-        free(branch_index_hint);
-
-    if(branch_index_hint_extra_size)
-        free(branch_index_hint_extra_size);
-}
-
-void switch_branch(char *choice_branch_name)
-{
-    if(!choice_branch_name)
-        return;
-
-    printf("switch_branch: %s\n", choice_branch_name);
-
-    char *branch_name_start = get_real_branch_name(choice_branch_name);
-    char *git_command = "git checkout ";
-    char *command = calloc(sizeof(char), strlen(branch_name_start) + strlen(git_command) + 1);
-
-    strcat(command, git_command);
-    strcat(command, branch_name_start);
-
+    char *command = calloc(sizeof(char), strlen(parameter) + strlen(base_command) + 1);
+    strcat(command, base_command);
+    strcat(command, parameter);
     system(command);
-
     free(command);
 }
+
 
 void delete_branch( char **branch_index, size_t branch_count, size_t *branch_operation_mark)
 {
@@ -631,7 +614,6 @@ void delete_branch( char **branch_index, size_t branch_count, size_t *branch_ope
     char *git_command = NULL;
     char *delete_remote_branch_command = "git push origin --delete ";
     char *delete_local_branch_command = "git branch -D ";
-    char *command = NULL;
     for(size_t i=0; i<branch_count; i++)
     {
         if(!branch_operation_mark[i])
@@ -665,83 +647,391 @@ void delete_branch( char **branch_index, size_t branch_count, size_t *branch_ope
                 continue;
             }
 
-            command = calloc(sizeof(char), strlen(git_command) + strlen(delete_branch_name + 1));
-            strcat(command, git_command);
-            strcat(command, delete_branch_name);
-
-            system(command);
-            free(command);
+            command_execute(git_command, delete_branch_name);
         }
     }
 }
 
-void local_branch_interaction()
+void remote_branch_interation(BranchInfo *remote_branch)
 {
-    char **branch_index = NULL;
-    char **branch_index_hint = NULL;
-    size_t branch_count = 0;
-    size_t current_branch_index = 0;
-    size_t *branch_index_hint_extra_size = NULL;
-    bool drop_operation = false;
+    /* update_remote_references(); */
 
-    get_all_branch_name(&branch_count,
-            &current_branch_index,
-            &branch_index,
-            &branch_index_hint,
-            &branch_index_hint_extra_size);
+    choice_interactive(
+            &(remote_branch->drop_operation),
+            remote_branch->branch_count,
+            remote_branch->current_branch_index,
+            remote_branch->branch_index,
+            remote_branch->branch_index_hint,
+            remote_branch->branch_index_hint_extra_size,
+            remote_branch->branch_operation_mark);
 
-    size_t *branch_operation_mark = calloc(branch_count, sizeof(size_t));
-
-    char *choice_branch_name 
-        = choice_interactive(&drop_operation, branch_count, current_branch_index,
-                branch_index, branch_index_hint, branch_index_hint_extra_size,
-                branch_operation_mark);
-
-    if(drop_operation)
+    if(remote_branch->drop_operation)
         goto exit;
     else
-        goto commint_operation;
+        goto commit_operation;
+
+commit_operation:
+
+    delete_branch(
+            remote_branch->branch_index,
+            remote_branch->branch_count,
+            remote_branch->branch_operation_mark);
+
+exit:
+    return;
+}
+
+bool create_branch_if_not_exists(BranchInfo *branch_info, char *branch_name)
+{
+    char *real_branch_name = NULL;
+    for(size_t i=0; i<branch_info->branch_count; i++)
+    {
+        real_branch_name = get_real_branch_name(branch_info->branch_index[i]);
+        if(strcmp(branch_name, real_branch_name) == 0)
+            return false;
+    }
+
+    printf("not found branch: %s creating\n", branch_name);
+
+    command_execute("git checkout -b ", branch_name);
+
+    return false;
+}
+
+void switch_branch(BranchInfo *branch_info, char *choice_branch_name)
+{
+    if(!choice_branch_name)
+        return;
+
+    if(create_branch_if_not_exists(branch_info, choice_branch_name))
+        return;
+
+    printf("switch_branch: %s\n", choice_branch_name);
+
+    char *branch_name_start = get_real_branch_name(choice_branch_name);
+    command_execute("git checkout ", branch_name_start);
+}
+
+void local_branch_interaction(BranchInfo *local_branch)
+{
+    local_branch->drop_operation = false;
+
+    char *choice_branch_name 
+        = choice_interactive(
+                &(local_branch->drop_operation),
+                local_branch->branch_count,
+                local_branch->current_branch_index,
+                local_branch->branch_index,
+                local_branch->branch_index_hint,
+                local_branch->branch_index_hint_extra_size,
+                local_branch->branch_operation_mark);
+
+    if(local_branch->drop_operation)
+        goto exit;
+    else
+        goto commit_operation;
 
 
-commint_operation:
+commit_operation:
 
-    printf("commint operation.\n");
+    printf("commit operation.\n");
 
-    switch_branch(choice_branch_name);
-    delete_branch(branch_index, branch_count, branch_operation_mark);
+    switch_branch(local_branch, choice_branch_name);
+
+    delete_branch(
+            local_branch->branch_index,
+            local_branch->branch_count,
+            local_branch->branch_operation_mark);
+
+exit:
+    return;
+}
+
+void append_parameter(char ***src, char *str)
+{
+    /* locate unused memory address and the lastest memory block index*/
+    size_t free_index = UINT64_MAX;
+    size_t last_index = UINT64_MAX;
+    for(size_t i=0; ; i++)
+    {
+        if(free_index == UINT64_MAX && (*src)[i] == NULL)
+        {
+            free_index = i;
+            break; /* found the free memory block just break and then copy str into it*/
+        }
+
+        if((*src)[i] == (void*)UINT64_MAX)
+        {
+            last_index = i;
+            continue;
+        }
+    }
+
+    /* allocate more memory while not found free memory block */
+    if(free_index == UINT64_MAX)
+    {
+        size_t new_size = (last_index+1)*2;
+        printf("not more space to store the parameter: %s realloc: %ld\n", str, new_size);
+        (*src)[last_index] = NULL;
+        (*src)[new_size-1] = (void*)UINT64_MAX; /* mark the end of the memory block*/
+        free_index = last_index;
+    }
+
+    (*src)[free_index] = calloc(strlen(str)+1, sizeof(char));
+    strcpy((*src)[free_index], str);
+}
+
+size_t parse_input_parameters(
+        int argc,
+        char **argv,
+        size_t **object_set,
+        size_t **feature_set,
+        char ****manipulate_target)
+{
+    char *char_ptr = NULL;
+    size_t set_index = 0;
+    int format = 0;
+
+    if(argc <= 1)
+        return 0;
+
+    format = ARGUMENT_FIRST;
+    if(argv[1][0] != '-')
+        format = OPTION_FRIST;
+
+    /* calculate options count*/
+    size_t option_count = 0;
+    int previous_type = TYPE_EXECUTE_FILE;
+    int current_type = previous_type;
+    for(size_t i=1; i<argc; i++)
+    {
+        if(argv[i][0] == '-')
+            current_type = TYPE_OPTION;
+        else
+            current_type = TYPE_PARAMETER;
+
+        if(current_type != previous_type)
+        {
+            previous_type = current_type;
+            option_count++;
+        }
+    }
+
+#define PARAMETER_BASE_COUNT 2
+
+    *object_set = calloc(option_count, sizeof(size_t));
+    *feature_set = calloc(option_count, sizeof(size_t));
+    *manipulate_target = calloc(option_count, sizeof(char**));
+    for(size_t i=0; i<option_count; i++)
+    {
+        (*manipulate_target)[i] = calloc(PARAMETER_BASE_COUNT, sizeof(char*));
+        (*manipulate_target)[i][PARAMETER_BASE_COUNT-1] = (void*)UINT64_MAX;
+    }
+
+    for(int i=1; i<argc; i++)
+    {
+        char_ptr = argv[i];
+
+        if(i>=3 && format==OPTION_FRIST && *char_ptr=='-' && argv[i-1][0] != '-')
+            set_index++;
+        if(i>=3 && format==ARGUMENT_FIRST && *char_ptr!='-' && argv[i-1][0] == '-')
+            set_index++;
+
+        /* extract parameter*/
+        if(*char_ptr != '-')
+        {
+            append_parameter(&(*manipulate_target)[set_index], char_ptr);
+            continue;
+        }
+
+        char_ptr++; /* pointe to the character after '-'*/
+
+        /* extract option*/
+        while(*char_ptr)
+        {
+            switch(*char_ptr)
+            {
+                case 'r':
+                    *object_set[set_index] |= REMOTE_BRANCH_INTERACTION;    break;
+                case 'l':
+                    *object_set[set_index] |= LOCAL_BRANCH_INTERACTION;     break;
+                case 'd':
+                    *feature_set[set_index] |= DELETE_BRANCH_INTERACTION;   break;
+                case 'h':
+                    *feature_set[set_index] |= HELP_MSG;                    break;
+
+                default:
+                    fprintf(stderr, "unknow parameter: %c", *char_ptr);
+                    break;
+            }
+            char_ptr++;
+        }
+    }
+
+    return option_count;
+}
+
+bool is_parameter_legal(size_t object_set, size_t feature_set)
+{
+    if(!(feature_set & DELETE_BRANCH_INTERACTION) 
+            && object_set & LOCAL_BRANCH_INTERACTION
+            && object_set & REMOTE_BRANCH_INTERACTION)
+    {
+        fprintf(stderr, "-r and -l parameter are conflict\n");
+        return false;
+    }
+
+    return true;
+}
+
+void print_help_msg()
+{
+    printf("Usage: \n");
+    printf("    -r manipulate remote branch\n");
+    printf("    -l manipulate local branch\n");
+    printf("    -d delete branch\n");
+    printf("    -h show this help message\n");
+}
+
+char *get_last_input_branch(char **manipulate_target)
+{
+    if(manipulate_target == NULL)
+        return NULL;
+
+    size_t i = 0;
+    for(;;i++)
+    {
+        if(manipulate_target[i] == NULL)
+            break;
+    }
+
+    if(i == 0)
+        return NULL;
+
+    return manipulate_target[i-1];
+}
+
+void run_interaction(size_t object_set, size_t feature_set, char **manipulate_target)
+{
+    if(!is_parameter_legal(object_set, feature_set))
+        return;
+
+    BranchInfo local_branch  = { '\0' };
+    BranchInfo remote_branch = { '\0' };
+    BranchInfo *branch_infos[2] = { &local_branch, &remote_branch };
+
+    get_all_branch_name( "git branch", parse_raw_output_of_git_branch, &local_branch);
+    get_all_branch_name( "git branch -r", parse_raw_output_of_git_branch_r, &remote_branch);
+
+    if(!feature_set)
+    {
+        char *last_input_branch = get_last_input_branch(manipulate_target);
+        for(size_t i=0; i<64; i++)
+        {
+            if(!object_set)
+            {
+                if(last_input_branch)
+                {
+                    switch_branch(&local_branch, last_input_branch);
+                    break;
+                }
+
+                if(i == 0)
+                    printf("not found branch object to manipulate\n");
+                break;
+            }
+            switch(get_and_reset_bit(&object_set, 1<<i))
+            {
+                case REMOTE_BRANCH_INTERACTION:
+                    remote_branch_interation(&remote_branch);
+                    break;
+                    /* TODO: 传递有分支名时进行切换处理,如果没有本地分支则新建一个分支*/
+                case LOCAL_BRANCH_INTERACTION:
+                    local_branch_interaction(&local_branch);
+                    break;
+                default:
+                    printf("unknown object bit\n");
+                    break;
+            }
+        }
+
+        goto exit;
+    }
+
+    for(size_t i=0; i<64; i++)
+    {
+        if(!feature_set)
+            break;
+
+        switch(get_and_reset_bit(&feature_set, 1<<i))
+        {
+            case 0:
+                break;
+            case HELP_MSG:
+                print_help_msg();
+                goto exit;
+            case DELETE_BRANCH_INTERACTION:
+                printf("delete branch interaction, delete from: %ld\n", object_set);
+                break;
+            default:
+                fprintf(stderr, "unknown mark");
+                break;
+        }
+    }
 
 exit:
 
     /* clean resources*/
-    for(size_t i=0; i<branch_count; i++)
-        if(branch_index[i])
-            free(branch_index[i]);
-    if(branch_index)
-        free(branch_index);
+    for(size_t j=0; j<sizeof(branch_infos)/sizeof(BranchInfo*); j++)
+    {
+        for(size_t i=0; i<branch_infos[j]->branch_count; i++)
+            if(branch_infos[j]->branch_index[i])
+                free(branch_infos[j]->branch_index[i]);
+        if(branch_infos[j]->branch_index)
+            free(branch_infos[j]->branch_index);
 
-    for(size_t i=0; i<branch_count; i++)
-        if(branch_index_hint[i])
-            free(branch_index_hint[i]);
-    if(branch_index_hint)
-        free(branch_index_hint);
+        for(size_t i=0; i<branch_infos[j]->branch_count; i++)
+            if(branch_infos[j]->branch_index_hint[i])
+                free(branch_infos[j]->branch_index_hint[i]);
+        if(branch_infos[j]->branch_index_hint)
+            free(branch_infos[j]->branch_index_hint);
 
-    if(branch_index_hint_extra_size)
-        free(branch_index_hint_extra_size);
+        if(branch_infos[j]->branch_index_hint_extra_size)
+            free(branch_infos[j]->branch_index_hint_extra_size);
 
-    if(branch_operation_mark)
-        free(branch_operation_mark);
+        if(branch_infos[j]->branch_operation_mark)
+            free(branch_infos[j]->branch_operation_mark);
+    }
 
+    return;
 }
 
 int main(int argc, char **argv)
 {
-    if(argc <= 1)
-    {
-        local_branch_interaction();
-        return 0;
-    }
+    size_t *feature_set =  NULL;
+    size_t *object_set = NULL;
+    char ***manipulate_target = NULL;
+    size_t manipulate_count = 0;
 
-    remote_branch_interation();
+    manipulate_count =
+        parse_input_parameters(argc, argv, &object_set, &feature_set, &manipulate_target);
+
+    for(size_t i=0; i<manipulate_count; i++)
+        run_interaction(object_set[i], feature_set[i], manipulate_target[i]);
+
+    free(feature_set);
+    free(object_set);
+    for(size_t i=0; i<manipulate_count; i++)
+    {
+        for(size_t j=0; manipulate_target[i][j] != (void*)UINT64_MAX; j++)
+        {
+            if(manipulate_target[i][j] == NULL)
+                break;
+            free(manipulate_target[i][j]);
+        }
+        free(manipulate_target[i]);
+    }
+    free(manipulate_target);
 
     return 0;
 }
