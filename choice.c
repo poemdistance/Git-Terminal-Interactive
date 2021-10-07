@@ -16,8 +16,9 @@
 #define LOCAL_BRANCH_INTERACTION    (1<<0)
 #define REMOTE_BRANCH_INTERACTION   (1<<1)
 
-#define DELETE_BRANCH_INTERACTION   (1<<0)
-#define HELP_MSG                    (1<<1)
+#define HELP_MSG                    (1<<0)
+#define DELETE_BRANCH_INTERACTION   (1<<1)
+#define UPDATE_BRANCH_INFO          (1<<2)
 
 #define ARGUMENT_FIRST        (1<<0)
 #define OPTION_FRIST          (1<<1)
@@ -594,23 +595,21 @@ char *get_real_branch_name(char *str)
     return branch_name_start;
 }
 
-void update_remote_references()
-{
-    system("git fetch --all --prune");
-}
 
-void command_execute(char *base_command, char *parameter,...)
+void command_execute(char *parameter,...)
 {
+    if(!parameter)
+        return;
+
     va_list valist;
     va_start(valist, parameter);
     char *str = NULL;
-    size_t command_length = strlen(base_command) + strlen(parameter) + 1;
+    size_t command_length = strlen(parameter) + 1;
 
     while((str = va_arg(valist, char*)) != NULL)
         command_length += strlen(str);
 
     char *command = calloc(sizeof(char), command_length);
-    strcat(command, base_command);
     strcat(command, parameter);
 
     va_start(valist, parameter);
@@ -625,6 +624,10 @@ void command_execute(char *base_command, char *parameter,...)
     free(command);
 }
 
+void update_remote_references()
+{
+    command_execute("git fetch --all --prune", NULL);
+}
 
 void interactive_delete_branch( char **branch_index, size_t branch_count, size_t *branch_operation_mark)
 {
@@ -672,8 +675,6 @@ void interactive_delete_branch( char **branch_index, size_t branch_count, size_t
 
 void remote_branch_interation(BranchInfo *remote_branch)
 {
-    /* update_remote_references(); */
-
     choice_interactive(
             &(remote_branch->drop_operation),
             remote_branch->branch_count,
@@ -878,11 +879,13 @@ size_t parse_input_parameters(
                     (*object_set)[set_index] |= LOCAL_BRANCH_INTERACTION;     break;
                 case 'd':
                     (*feature_set)[set_index] |= DELETE_BRANCH_INTERACTION;   break;
+                case 'u':
+                    (*feature_set)[set_index] |= UPDATE_BRANCH_INFO;          break;
                 case 'h':
                     (*feature_set)[set_index] |= HELP_MSG;                    break;
 
                 default:
-                    fprintf(stderr, "unknow parameter: %c", *char_ptr);
+                    fprintf(stderr, "unknown parameter: %c", *char_ptr);
                     break;
             }
             char_ptr++;
@@ -894,16 +897,6 @@ size_t parse_input_parameters(
 
 bool is_parameter_legal(size_t object_set, size_t feature_set)
 {
-    if(!(feature_set & DELETE_BRANCH_INTERACTION) 
-            && object_set & LOCAL_BRANCH_INTERACTION
-            && object_set & REMOTE_BRANCH_INTERACTION)
-    {
-        fprintf(stderr, "-r and -l parameter are conflict\n");
-        return false;
-    }
-
-    printf("parameter legaly objest_set: %ld feature_set: %ld\n", object_set, feature_set);
-
     return true;
 }
 
@@ -913,6 +906,7 @@ void print_help_msg()
     printf("    -r manipulate remote branch\n");
     printf("    -l manipulate local branch\n");
     printf("    -d delete branch\n");
+    printf("    -u update branch info\n");
     printf("    -h show this help message\n");
 }
 
@@ -981,6 +975,15 @@ void command_line_delete_branch(size_t object_set, char **manipulate_target)
     }
 }
 
+void command_line_update_branch_info(size_t object_set)
+{
+    if(object_set & REMOTE_BRANCH_INTERACTION)
+        update_remote_references();
+
+    if(object_set & LOCAL_BRANCH_INTERACTION)
+        command_execute("git remote update origin --prune", NULL);
+}
+
 void run_interaction(size_t object_set, size_t feature_set, char **manipulate_target)
 {
     if(!is_parameter_legal(object_set, feature_set))
@@ -1045,6 +1048,9 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
                 goto exit;
             case DELETE_BRANCH_INTERACTION:
                 command_line_delete_branch(object_set, manipulate_target);
+            case UPDATE_BRANCH_INFO:
+                command_line_update_branch_info(object_set);
+                break;
             default:
                 fprintf(stderr, "unknown mark");
                 break;
