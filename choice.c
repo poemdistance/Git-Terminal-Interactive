@@ -626,9 +626,9 @@ void command_execute(char *base_command, char *parameter,...)
 }
 
 
-void delete_branch( char **branch_index, size_t branch_count, size_t *branch_operation_mark)
+void interactive_delete_branch( char **branch_index, size_t branch_count, size_t *branch_operation_mark)
 {
-    char *delete_branch_name = NULL;
+    char *interactive_delete_branch_name = NULL;
     char *git_command = NULL;
     char *delete_remote_branch_command = "git push origin --delete ";
     char *delete_local_branch_command = "git branch -D ";
@@ -657,7 +657,7 @@ void delete_branch( char **branch_index, size_t branch_count, size_t *branch_ope
                     continue;
             }
 
-            delete_branch_name = get_real_branch_name(branch_index[i]);
+            interactive_delete_branch_name = get_real_branch_name(branch_index[i]);
 
             if(git_command == delete_local_branch_command && branch_index[i][0] == '*')
             {
@@ -665,7 +665,7 @@ void delete_branch( char **branch_index, size_t branch_count, size_t *branch_ope
                 continue;
             }
 
-            command_execute(git_command, delete_branch_name);
+            command_execute(git_command, interactive_delete_branch_name, NULL);
         }
     }
 }
@@ -690,7 +690,7 @@ void remote_branch_interation(BranchInfo *remote_branch)
 
 commit_operation:
 
-    delete_branch(
+    interactive_delete_branch(
             remote_branch->branch_index,
             remote_branch->branch_count,
             remote_branch->branch_operation_mark);
@@ -711,7 +711,7 @@ bool create_branch_if_not_exists(BranchInfo *branch_info, char *branch_name)
 
     printf("not found branch: [%s] creating...\n", branch_name);
 
-    command_execute("git checkout -b ", branch_name);
+    command_execute("git checkout -b ", branch_name, NULL);
 
     return true;
 }
@@ -727,7 +727,7 @@ void switch_branch(BranchInfo *branch_info, char *choice_branch_name)
 
     printf("switch_branch: %s\n", choice_branch_name);
 
-    command_execute("git checkout ", real_branch_name);
+    command_execute("git checkout ", real_branch_name, NULL);
 }
 
 void local_branch_interaction(BranchInfo *local_branch)
@@ -756,7 +756,7 @@ commit_operation:
 
     switch_branch(local_branch, choice_branch_name);
 
-    delete_branch(
+    interactive_delete_branch(
             local_branch->branch_index,
             local_branch->branch_count,
             local_branch->branch_operation_mark);
@@ -966,6 +966,21 @@ void create_remote_branch(char *branch_name)
         free(raw_buf);
 }
 
+void command_line_delete_branch(size_t object_set, char **manipulate_target)
+{
+    for(size_t i=0; manipulate_target[i] != (void*)UINT64_MAX; i++)
+    {
+        if(manipulate_target[i] == NULL)
+            break;
+
+        if(object_set & REMOTE_BRANCH_INTERACTION)
+            command_execute("git push origin --delete ", manipulate_target[i], NULL);
+
+        if(object_set & LOCAL_BRANCH_INTERACTION)
+            command_execute("git branch -D ", manipulate_target[i], NULL);
+    }
+}
+
 void run_interaction(size_t object_set, size_t feature_set, char **manipulate_target)
 {
     if(!is_parameter_legal(object_set, feature_set))
@@ -978,18 +993,17 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
     get_all_branch_name( "git branch", parse_raw_output_of_git_branch, &local_branch);
     get_all_branch_name( "git branch -r", parse_raw_output_of_git_branch_r, &remote_branch);
 
+    /* default manipulate local branch*/
+    if(!object_set)
+        object_set |= LOCAL_BRANCH_INTERACTION;
+
     if(!feature_set)
     {
-        /* default manipulate local branch*/
-        if(!object_set)
-            object_set |= LOCAL_BRANCH_INTERACTION;
-
         char *last_input_branch = get_last_input_branch(manipulate_target);
         for(size_t i=0; i<64; i++)
         {
             if(!object_set)
                 break;
-
             switch(get_and_reset_bit(&object_set, 1<<i))
             {
                 case REMOTE_BRANCH_INTERACTION:
@@ -1030,8 +1044,7 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
                 print_help_msg();
                 goto exit;
             case DELETE_BRANCH_INTERACTION:
-                printf("delete branch interaction, delete from: %ld\n", object_set);
-                break;
+                command_line_delete_branch(object_set, manipulate_target);
             default:
                 fprintf(stderr, "unknown mark");
                 break;
