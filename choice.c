@@ -817,6 +817,9 @@ size_t parse_input_parameters(
         }
     }
 
+    if(option_count > 1)
+        option_count--;
+
 #define PARAMETER_BASE_COUNT 2
 
     *object_set = calloc(option_count, sizeof(size_t));
@@ -832,9 +835,9 @@ size_t parse_input_parameters(
     {
         char_ptr = argv[i];
 
-        if(i>=3 && format==OPTION_FRIST && *char_ptr=='-' && argv[i-1][0] != '-')
+        if(i>=3 && format==OPTION_FRIST && *char_ptr!='-' && argv[i-1][0] == '-')
             set_index++;
-        if(i>=3 && format==ARGUMENT_FIRST && *char_ptr!='-' && argv[i-1][0] == '-')
+        if(i>=3 && format==ARGUMENT_FIRST && *char_ptr=='-' && argv[i-1][0] != '-')
             set_index++;
 
         /* extract parameter*/
@@ -852,13 +855,13 @@ size_t parse_input_parameters(
             switch(*char_ptr)
             {
                 case 'r':
-                    *object_set[set_index] |= REMOTE_BRANCH_INTERACTION;    break;
+                    (*object_set)[set_index] |= REMOTE_BRANCH_INTERACTION;    break;
                 case 'l':
-                    *object_set[set_index] |= LOCAL_BRANCH_INTERACTION;     break;
+                    (*object_set)[set_index] |= LOCAL_BRANCH_INTERACTION;     break;
                 case 'd':
-                    *feature_set[set_index] |= DELETE_BRANCH_INTERACTION;   break;
+                    (*feature_set)[set_index] |= DELETE_BRANCH_INTERACTION;   break;
                 case 'h':
-                    *feature_set[set_index] |= HELP_MSG;                    break;
+                    (*feature_set)[set_index] |= HELP_MSG;                    break;
 
                 default:
                     fprintf(stderr, "unknow parameter: %c", *char_ptr);
@@ -880,6 +883,8 @@ bool is_parameter_legal(size_t object_set, size_t feature_set)
         fprintf(stderr, "-r and -l parameter are conflict\n");
         return false;
     }
+
+    printf("parameter legaly objest_set: %ld feature_set: %ld\n", object_set, feature_set);
 
     return true;
 }
