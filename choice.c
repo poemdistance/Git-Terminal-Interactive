@@ -933,29 +933,27 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
 
     if(!feature_set)
     {
+        /* default manipulate local branch*/
+        if(!object_set)
+            object_set |= LOCAL_BRANCH_INTERACTION;
+
         char *last_input_branch = get_last_input_branch(manipulate_target);
         for(size_t i=0; i<64; i++)
         {
             if(!object_set)
-            {
-                if(last_input_branch)
-                {
-                    switch_branch(&local_branch, last_input_branch);
-                    break;
-                }
-
-                if(i == 0)
-                    local_branch_interaction(&local_branch);
-
                 break;
-            }
+
             switch(get_and_reset_bit(&object_set, 1<<i))
             {
                 case REMOTE_BRANCH_INTERACTION:
                     remote_branch_interation(&remote_branch);
                     break;
-                    /* TODO: 传递有分支名时进行切换处理,如果没有本地分支则新建一个分支*/
                 case LOCAL_BRANCH_INTERACTION:
+                    if(last_input_branch)
+                    {
+                        switch_branch(&local_branch, last_input_branch);
+                        break;
+                    }
                     local_branch_interaction(&local_branch);
                     break;
                 default:
