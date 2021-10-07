@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <curses.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #define ROW_NUM 20
 #define COL_NUM 64
@@ -598,11 +599,28 @@ void update_remote_references()
     system("git fetch --all --prune");
 }
 
-void command_execute(char *base_command, char *parameter)
+void command_execute(char *base_command, char *parameter,...)
 {
-    char *command = calloc(sizeof(char), strlen(parameter) + strlen(base_command) + 1);
+    va_list valist;
+    va_start(valist, parameter);
+    char *str = NULL;
+    size_t command_length = strlen(base_command) + strlen(parameter) + 1;
+
+    while((str = va_arg(valist, char*)) != NULL)
+        command_length += strlen(str);
+
+    char *command = calloc(sizeof(char), command_length);
     strcat(command, base_command);
     strcat(command, parameter);
+
+    va_start(valist, parameter);
+    while((str = va_arg(valist, char*)) != NULL)
+        strcat(command, str);
+
+    va_end(valist);
+
+    printf("execute command: %s\n", command);
+
     system(command);
     free(command);
 }
@@ -919,6 +937,35 @@ char *get_last_input_branch(char **manipulate_target)
     return manipulate_target[i-1];
 }
 
+void remote_newline(char *str)
+{
+    if(!str)
+        return;
+
+    char *char_ptr = str;
+    while(*char_ptr)
+    {
+        if(*char_ptr == '\n')
+            *char_ptr = '\0';
+
+        char_ptr++;
+    }
+    return;
+}
+
+void create_remote_branch(char *branch_name)
+{
+    char *raw_buf = NULL;
+    get_raw_output_from_git_branch("git show -s --format=%H", &raw_buf);
+
+    remote_newline(raw_buf);
+
+    command_execute("git push origin ", raw_buf, ":refs/heads/", branch_name, NULL);
+
+    if(raw_buf)
+        free(raw_buf);
+}
+
 void run_interaction(size_t object_set, size_t feature_set, char **manipulate_target)
 {
     if(!is_parameter_legal(object_set, feature_set))
@@ -946,6 +993,11 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
             switch(get_and_reset_bit(&object_set, 1<<i))
             {
                 case REMOTE_BRANCH_INTERACTION:
+                    if(last_input_branch)
+                    {
+                        create_remote_branch(last_input_branch);
+                        break;
+                    }
                     remote_branch_interation(&remote_branch);
                     break;
                 case LOCAL_BRANCH_INTERACTION:
