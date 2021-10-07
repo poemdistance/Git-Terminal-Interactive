@@ -691,11 +691,11 @@ bool create_branch_if_not_exists(BranchInfo *branch_info, char *branch_name)
             return false;
     }
 
-    printf("not found branch: %s creating\n", branch_name);
+    printf("not found branch: [%s] creating...\n", branch_name);
 
     command_execute("git checkout -b ", branch_name);
 
-    return false;
+    return true;
 }
 
 void switch_branch(BranchInfo *branch_info, char *choice_branch_name)
@@ -703,13 +703,13 @@ void switch_branch(BranchInfo *branch_info, char *choice_branch_name)
     if(!choice_branch_name)
         return;
 
-    if(create_branch_if_not_exists(branch_info, choice_branch_name))
+    char *real_branch_name = get_real_branch_name(choice_branch_name);
+    if(create_branch_if_not_exists(branch_info, real_branch_name))
         return;
 
     printf("switch_branch: %s\n", choice_branch_name);
 
-    char *branch_name_start = get_real_branch_name(choice_branch_name);
-    command_execute("git checkout ", branch_name_start);
+    command_execute("git checkout ", real_branch_name);
 }
 
 void local_branch_interaction(BranchInfo *local_branch)
@@ -901,6 +901,9 @@ char *get_last_input_branch(char **manipulate_target)
     size_t i = 0;
     for(;;i++)
     {
+        if(manipulate_target[i] == (void*)UINT64_MAX)
+            break;
+
         if(manipulate_target[i] == NULL)
             break;
     }
@@ -937,7 +940,8 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
                 }
 
                 if(i == 0)
-                    printf("not found branch object to manipulate\n");
+                    local_branch_interaction(&local_branch);
+
                 break;
             }
             switch(get_and_reset_bit(&object_set, 1<<i))
@@ -1018,6 +1022,9 @@ int main(int argc, char **argv)
 
     for(size_t i=0; i<manipulate_count; i++)
         run_interaction(object_set[i], feature_set[i], manipulate_target[i]);
+
+    if(manipulate_count == 0)
+        run_interaction(0, 0, 0);
 
     free(feature_set);
     free(object_set);
