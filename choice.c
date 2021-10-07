@@ -655,8 +655,6 @@ void interactive_delete_branch( char **branch_index, size_t branch_count, size_t
                     git_command = delete_remote_branch_command;
                     break;
                 default:
-                    fprintf(stderr, "git command nil pointer error, branch_operation_mark: %ld",
-                            branch_operation_mark[i]);
                     continue;
             }
 
