@@ -609,6 +609,12 @@ int parse_raw_output_of_git_branch( char *raw_buf, BranchInfo *branch_info)
 
             if(is_remote_branch(branch_name_start))
             {
+                /* is seems that no need to show the remote branch in local branch 
+                 * interaction pannel. so disable showing remote branch in
+                 * local branch interaction pannel in current time.*/
+                char_ptr++;
+                continue;
+
                 branch_name_start = exclude_remote_prefix(branch_name_start);
                 branch_info->branch_location[branch_info->branch_count] |= REMOTE_BRANCH;
             }
@@ -957,7 +963,7 @@ size_t parse_input_parameters(
                     (*feature_set)[set_index] |= HELP_MSG;                    break;
 
                 default:
-                    fprintf(stderr, "unknown parameter: %c", *char_ptr);
+                    fprintf(stderr, "unknown parameter: %c\n", *char_ptr);
                     break;
             }
             char_ptr++;
