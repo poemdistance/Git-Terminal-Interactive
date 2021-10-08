@@ -696,8 +696,8 @@ int parse_raw_output_of_git_branch( char *raw_buf, BranchInfo *branch_info)
                             max_branch_size*sizeof(size_t)/2,
                             max_branch_size*sizeof(size_t));
 
-                printf("branch count > max branch size, reallocz branch size: %ld\n",
-                        max_branch_size);
+                /* printf("branch count > max branch size, reallocz branch size: %ld\n", */
+                        /* max_branch_size); */
             }
         }
 
