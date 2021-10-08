@@ -370,7 +370,7 @@ int get_raw_output_from_git_branch(char *git_command, char **input_buf)
     FILE *fp = popen(git_command, "r");
     if(fp == NULL)
     {
-        fprintf(stderr, "popen(\"git branch\") execute failed. line: %d", __LINE__);
+        fprintf(stderr, "popen(\"git branch\") execute failed. line: %d\n", __LINE__);
         exit(1);
     }
 
@@ -392,7 +392,7 @@ int get_raw_output_from_git_branch(char *git_command, char **input_buf)
         /* NOTE: reach the trailing character: '\0' will return read_size = 0*/
         if( (read_size = fread(read_buf, sizeof(char), sizeof(read_buf), fp)) < 0 )
         {
-            fprintf(stderr, "fread data from popen file pointer failed. line: %d", __LINE__);
+            fprintf(stderr, "fread data from popen file pointer failed. line: %d\n", __LINE__);
             exit(1);
         }
 
@@ -763,7 +763,7 @@ void interactive_delete_branch( char **branch_index, size_t branch_count, size_t
 
             if(git_command == delete_local_branch_command && branch_index[i][0] == '*')
             {
-                fprintf(stderr, "delete current local branch is forbbiden, skipping...");
+                fprintf(stderr, "delete current local branch is forbbiden, skipping...\n");
                 continue;
             }
 
@@ -1149,7 +1149,7 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
                 command_line_update_branch_info(object_set);
                 break;
             default:
-                fprintf(stderr, "unknown mark");
+                fprintf(stderr, "unknown mark\n");
                 break;
         }
     }
