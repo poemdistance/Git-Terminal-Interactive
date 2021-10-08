@@ -1090,7 +1090,7 @@ char *get_last_input_branch(char **manipulate_target)
     return manipulate_target[i-1];
 }
 
-void remote_newline(char *str)
+void remove_newline(char *str)
 {
     if(!str)
         return;
@@ -1111,7 +1111,7 @@ void create_remote_branch(char *branch_name)
     char *raw_buf = NULL;
     get_raw_output_from_git_branch("git show -s --format=%H", &raw_buf);
 
-    remote_newline(raw_buf);
+    remove_newline(raw_buf);
 
     command_execute("git push origin ", raw_buf, ":refs/heads/", branch_name, NULL);
 
