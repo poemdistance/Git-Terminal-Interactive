@@ -10,7 +10,7 @@
 
 ### Run
 
-    # copy this execution file to /usr/bin/xxx and rename, so that you can execute it everywhere
+    # copy this executable file to /usr/bin/xxx and rename, so that you can execute it everywhere
     ./choice 
 
 ### Example
