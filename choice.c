@@ -29,8 +29,9 @@
 #define TYPE_PARAMETER      (1<<1)
 #define TYPE_OPTION         (1<<2)
 
-#define REMOTE_BRANCH (1<<0)
-#define LOCAL_BRANCH  (1<<1)
+#define UNCONCERN_BRANCH  (0)
+#define REMOTE_BRANCH     (1<<0)
+#define LOCAL_BRANCH      (1<<1)
 
 typedef struct BranchInfo {
     size_t interaction_object;
@@ -447,6 +448,8 @@ int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
     char **dup_branch_index = calloc(base_branch_size, sizeof(char*));
     size_t *dup_branch_index_extra_size = calloc(base_branch_size, sizeof(size_t));
 
+    branch_info->branch_location = calloc(base_branch_size, sizeof(size_t));
+
     /* update the address pointed to by input_buf*/
     branch_info->branch_index = branch_index;
     branch_info->branch_index_hint = dup_branch_index;
@@ -488,7 +491,11 @@ int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
                 calloc(sizeof(char), strlen(branch_name_start) + 1 + BRANCH_EXTRA_HINT_SIZE);
 
             dup_branch_index_extra_size[branch_count] = BRANCH_EXTRA_HINT_SIZE;
-            strcpy(branch_index[branch_count++], branch_name_start);
+            strcpy(branch_index[branch_count], branch_name_start);
+
+            branch_info->branch_location[branch_count] |= UNCONCERN_BRANCH;
+
+            branch_count++;
 
             /* printf("found branch: %s\n", branch_index[branch_count-1]); */
 
@@ -505,6 +512,9 @@ int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
 
                 branch_info->branch_index_hint_extra_size = dup_branch_index_extra_size =
                     realloc(dup_branch_index_extra_size, max_branch_size*sizeof(size_t));
+
+                branch_info->branch_location =
+                    realloc(branch_info->branch_location, max_branch_size);
 
                 /* printf("branch count > max branch size, realloc branch size: %ld\n", */
                 /*         max_branch_size); */
