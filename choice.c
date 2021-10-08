@@ -5,6 +5,7 @@
 #include <curses.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <time.h>
 
 #define ROW_NUM 20
 #define COL_NUM 64
@@ -370,7 +371,7 @@ int get_raw_output_from_git_branch(char *git_command, char **input_buf)
     FILE *fp = popen(git_command, "r");
     if(fp == NULL)
     {
-        fprintf(stderr, "popen(\"git branch\") execute failed. line: %d", __LINE__);
+        fprintf(stderr, "popen(\"git branch\") execute failed. line: %d\n", __LINE__);
         exit(1);
     }
 
@@ -392,7 +393,7 @@ int get_raw_output_from_git_branch(char *git_command, char **input_buf)
         /* NOTE: reach the trailing character: '\0' will return read_size = 0*/
         if( (read_size = fread(read_buf, sizeof(char), sizeof(read_buf), fp)) < 0 )
         {
-            fprintf(stderr, "fread data from popen file pointer failed. line: %d", __LINE__);
+            fprintf(stderr, "fread data from popen file pointer failed. line: %d\n", __LINE__);
             exit(1);
         }
 
@@ -730,24 +731,97 @@ void update_remote_references()
     command_execute("git fetch --all --prune", NULL);
 }
 
-void interactive_delete_branch( char **branch_index, size_t branch_count, size_t *branch_operation_mark)
+bool branch_is_clean(BranchInfo *branch_info)
+{
+    char *raw_buf = NULL;
+    get_raw_output_from_git_branch("git status --untracked-files=no --porcelain", &raw_buf);
+
+    size_t output_len = strlen(raw_buf);
+    free(raw_buf);
+
+    return output_len <= 0;
+}
+
+char *try_to_get_main_branch(BranchInfo *branch_info, char *exclude_branch)
+{
+    char *branch_name = NULL;
+    bool found_main_branch = false;
+    for(size_t i=0; i<branch_info->branch_count; i++)
+    {
+        branch_name = get_real_branch_name(branch_info->branch_index[i]);
+        if(strcmp(branch_name, "master") == 0)
+        {
+            found_main_branch = true;
+            break;
+        }
+        else if(strcmp(branch_name, "main") == 0)
+        {
+            found_main_branch = true;
+            break;
+        }
+    }
+
+    /* return founded main branch*/
+    if(found_main_branch)
+        return branch_name;
+
+    /* not found main branch, select another branch which first met*/
+    for(size_t i=0; i<branch_info->branch_count; i++)
+    {
+        branch_name = get_real_branch_name(branch_info->branch_index[i]);
+        if(strcmp(branch_name, exclude_branch) == 0)
+            continue;
+
+        return branch_name;
+    }
+
+    return NULL;
+}
+
+bool prepare_work_of_branch_delete(BranchInfo *branch_info, char *delete_target)
+{
+    if(!branch_is_clean(branch_info))
+    {
+        time_t current_time;
+        time(&current_time);
+        command_execute("git stash -m \"", "generated in deleting ",
+                delete_target, " ", ctime(&current_time), "\"", NULL);
+    }
+
+    printf("delete target is current branch, try to checkout to master/main\n");
+
+    char *main_branch =
+        try_to_get_main_branch(branch_info, delete_target);
+
+    if(main_branch)
+        command_execute( "git checkout ", main_branch, NULL);
+    else
+    {
+        fprintf(stderr, "try to switch to another branch failed.\n");
+        return false;
+    }
+
+    return true;
+}
+
+void interactive_delete_branch(BranchInfo *branch_info)
 {
     char *interactive_delete_branch_name = NULL;
     char *git_command = NULL;
     char *delete_remote_branch_command = "git push origin --delete ";
     char *delete_local_branch_command = "git branch -D ";
-    for(size_t i=0; i<branch_count; i++)
+    for(size_t i=0; i<branch_info->branch_count; i++)
     {
-        if(!branch_operation_mark[i])
+        if(!branch_info->branch_operation_mark[i])
             continue;
 
         for(short bit=0; bit<64; bit++)
         {
             /* no operation mark, break to check next branch*/
-            if(!branch_operation_mark[i])
+            if(!branch_info->branch_operation_mark[i])
                 break;
 
-            switch(get_and_reset_bit(&(branch_operation_mark[i]), 1 << bit))
+            switch(get_and_reset_bit(&(branch_info->branch_operation_mark[i]), 1 << bit))
             {
                 case DELETE_LOCAL_BRANCH_BIT:
                     git_command = delete_local_branch_command;
@@ -759,12 +833,15 @@ void interactive_delete_branch( char **branch_index, size_t branch_count, size_t
                     continue;
             }
 
-            interactive_delete_branch_name = get_real_branch_name(branch_index[i]);
+            interactive_delete_branch_name =
+                get_real_branch_name(branch_info->branch_index[i]);
 
-            if(git_command == delete_local_branch_command && branch_index[i][0] == '*')
+            /* try to switch to another branch before delete current branch*/
+            if(branch_info->current_branch_index == i 
+                    && git_command == delete_local_branch_command)
             {
-                fprintf(stderr, "delete current local branch is forbbiden, skipping...");
-                continue;
+                if(!prepare_work_of_branch_delete(branch_info, interactive_delete_branch_name))
+                    continue;
             }
 
             command_execute(git_command, interactive_delete_branch_name, NULL);
@@ -815,10 +892,7 @@ void remote_branch_interation(BranchInfo *remote_branch)
 
 commit_operation:
 
-    interactive_delete_branch(
-            remote_branch->branch_index,
-            remote_branch->branch_count,
-            remote_branch->branch_operation_mark);
+    interactive_delete_branch(remote_branch);
 
     switch_branch(remote_branch->local_branch, choice_branch_name);
 
@@ -845,10 +919,7 @@ commit_operation:
 
     switch_branch(local_branch, choice_branch_name);
 
-    interactive_delete_branch(
-            local_branch->branch_index,
-            local_branch->branch_count,
-            local_branch->branch_operation_mark);
+    interactive_delete_branch(local_branch);
 
 exit:
     return;
@@ -1149,7 +1220,7 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
                 command_line_update_branch_info(object_set);
                 break;
             default:
-                fprintf(stderr, "unknown mark");
+                fprintf(stderr, "unknown mark\n");
                 break;
         }
     }
@@ -1216,4 +1287,3 @@ int main(int argc, char **argv)
 
     return 0;
 }
-
