@@ -452,6 +452,40 @@ int get_raw_output_from_git_branch(char *git_command, char **input_buf)
     return 0;
 }
 
+char *get_real_branch_name(char *str)
+{
+    if(str[0] != '*')
+        return str;
+
+    /* pointer to the position after character '*' */
+    char *char_ptr = str + 1;
+    char *branch_name_start = char_ptr;
+    while(*char_ptr)
+    {
+        if(is_space(*char_ptr) )
+        {
+            char_ptr++;
+            continue;
+        }
+
+        branch_name_start = char_ptr;
+        break;
+    }
+
+    return branch_name_start;
+}
+
+bool branch_is_stored(BranchInfo *branch_info, char *checking_branch)
+{
+    for(size_t i=0; i<branch_info->branch_count; i++)
+    {
+        if(strcmp(get_real_branch_name(branch_info->branch_index[i]), checking_branch) == 0)
+            return true;
+    }
+
+    return false;
+}
+
 int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
 {
     size_t base_branch_size = 6;
@@ -471,7 +505,6 @@ int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
     char *char_ptr = raw_buf;
     char *branch_name_start = NULL;
     bool branch_not_found = true;
-    bool had_skipped_first_branch = false;
     while( *char_ptr )
     {
         if(is_space(*char_ptr))
@@ -486,18 +519,24 @@ int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
             branch_not_found = false;
         }
 
-        if(is_newline(*char_ptr) && !had_skipped_first_branch )
-        {
-            char_ptr++;
-            had_skipped_first_branch = true;
-            branch_not_found = true;
-            continue;
-        }
-
         /* NOTE: did not handle the not newline trailing text*/
-        if(had_skipped_first_branch && is_newline(*char_ptr))
+        if(is_newline(*char_ptr))
         {
             *char_ptr = '\0';
+            branch_not_found = true;
+
+            if(strstr(branch_name_start, "HEAD") == branch_name_start)
+            {
+                char_ptr++;
+                continue;
+            }
+
+            if(branch_is_stored(branch_info, branch_name_start))
+            {
+                char_ptr++;
+                continue;
+            }
+
             branch_index[branch_count] = calloc(sizeof(char), strlen(branch_name_start)+1);
 
             dup_branch_index[branch_count] = 
@@ -511,8 +550,6 @@ int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
             branch_count++;
 
             /* printf("found branch: %s\n", branch_index[branch_count-1]); */
-
-            branch_not_found = true;
 
             if(branch_count == max_branch_size)
             {
@@ -564,40 +601,6 @@ char *exclude_remote_prefix(char *branch_name)
         return start + strlen("HEAD -> origin/");
 
     return start;
-}
-
-char *get_real_branch_name(char *str)
-{
-    if(str[0] != '*')
-        return str;
-
-    /* pointer to the position after character '*' */
-    char *char_ptr = str + 1;
-    char *branch_name_start = char_ptr;
-    while(*char_ptr)
-    {
-        if(is_space(*char_ptr) )
-        {
-            char_ptr++;
-            continue;
-        }
-
-        branch_name_start = char_ptr;
-        break;
-    }
-
-    return branch_name_start;
-}
-
-bool branch_is_stored(BranchInfo *branch_info, char *checking_branch)
-{
-    for(size_t i=0; i<branch_info->branch_count; i++)
-    {
-        if(strcmp(get_real_branch_name(branch_info->branch_index[i]), checking_branch) == 0)
-            return true;
-    }
-
-    return false;
 }
 
 int parse_raw_output_of_git_branch( char *raw_buf, BranchInfo *branch_info)
