@@ -730,6 +730,17 @@ void update_remote_references()
     command_execute("git fetch --all --prune", NULL);
 }
 
+bool branch_is_clean(BranchInfo *branch_info)
+{
+    char *raw_buf = NULL;
+    get_raw_output_from_git_branch("git status --untracked-files=no --porcelain", &raw_buf);
+
+    size_t output_len = strlen(raw_buf);
+    free(raw_buf);
+
+    return output_len <= 0;
+}
+
 char *try_to_get_main_branch(BranchInfo *branch_info, char *exclude_branch)
 {
     char *branch_name = NULL;
@@ -766,6 +777,27 @@ char *try_to_get_main_branch(BranchInfo *branch_info, char *exclude_branch)
     return NULL;
 }
 
+bool prepare_work_of_branch_delete(BranchInfo *branch_info, char *delete_target)
+{
+    if(!branch_is_clean(branch_info))
+        command_execute("git stash -m \"", "generated in deleteing ", delete_target, "\"", NULL);
+
+    printf("delete target is current branch, try to checkout to master/main\n");
+
+    char *main_branch =
+        try_to_get_main_branch(branch_info, delete_target);
+
+    if(main_branch)
+        command_execute( "git checkout ", main_branch, NULL);
+    else
+    {
+        fprintf(stderr, "try to switch to another branch failed.\n");
+        return false;
+    }
+
+    return true;
+}
+
 void interactive_delete_branch(BranchInfo *branch_info)
 {
     char *interactive_delete_branch_name = NULL;
@@ -800,20 +832,10 @@ void interactive_delete_branch(BranchInfo *branch_info)
 
             /* try to switch to another branch before delete current branch*/
             if(branch_info->current_branch_index == i 
-                    && git_command = delete_local_branch_command)
+                    && git_command == delete_local_branch_command)
             {
-                printf("delete target is current branch, try to checkout to master/main\n");
-
-                char *main_branch =
-                    try_to_get_main_branch(branch_info, interactive_delete_branch_name);
-
-                if(main_branch)
-                    command_execute( "git checkout ", main_branch, NULL);
-                else
-                {
-                    fprintf(stderr, "try to switch to another branch failed.\n");
+                if(!prepare_work_of_branch_delete(branch_info, interactive_delete_branch_name))
                     continue;
-                }
             }
 
             command_execute(git_command, interactive_delete_branch_name, NULL);
@@ -1259,4 +1281,3 @@ int main(int argc, char **argv)
 
     return 0;
 }
-
