@@ -941,7 +941,7 @@ void append_parameter(char ***src, char *str)
         if((*src)[i] == (void*)UINT64_MAX)
         {
             last_index = i;
-            continue;
+            break;
         }
     }
 
@@ -950,6 +950,7 @@ void append_parameter(char ***src, char *str)
     {
         size_t new_size = (last_index+1)*2;
         printf("not more space to store the parameter: %s realloc: %ld\n", str, new_size);
+        *src = realloc(*src, new_size);
         (*src)[last_index] = NULL;
         (*src)[new_size-1] = (void*)UINT64_MAX; /* mark the end of the memory block*/
         free_index = last_index;
@@ -1021,7 +1022,7 @@ size_t parse_input_parameters(
         /* extract parameter*/
         if(*char_ptr != '-')
         {
-            append_parameter(&(*manipulate_target)[set_index], char_ptr);
+            append_parameter(&((*manipulate_target)[set_index]), char_ptr);
             continue;
         }
 
