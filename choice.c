@@ -48,6 +48,18 @@ typedef struct BranchInfo {
     struct BranchInfo *remote_branch;
 } BranchInfo;
 
+void *reallocz(void *addr, size_t old_size, size_t new_size)
+{
+    void *new_addr = realloc(addr, new_size);
+    if(new_addr && new_size > old_size)
+    {
+        size_t dirty_size = new_size - old_size;
+        void *dirty_start = ((char*)new_addr) + old_size;
+        memset(dirty_start, 0, dirty_size);
+    }
+    return new_addr;
+}
+
 void print_in_middle(WINDOW *win, int y, int startx, int width, char *string, chtype color) {
     int x;
 
@@ -925,20 +937,20 @@ exit:
     return;
 }
 
-void append_parameter(char ****src, char *str)
+void append_parameter(char ***src, char *str)
 {
     /* locate unused memory address and the lastest memory block index*/
     size_t free_index = UINT64_MAX;
     size_t last_index = UINT64_MAX;
     for(size_t i=0; ; i++)
     {
-        if(free_index == UINT64_MAX && (**src)[i] == NULL)
+        if(free_index == UINT64_MAX && (*src)[i] == NULL)
         {
             free_index = i;
             break; /* found the free memory block just break and then copy str into it*/
         }
 
-        if((**src)[i] == (void*)UINT64_MAX)
+        if((*src)[i] == (void*)UINT64_MAX)
         {
             last_index = i;
             break;
@@ -949,15 +961,14 @@ void append_parameter(char ****src, char *str)
     if(free_index == UINT64_MAX)
     {
         size_t new_size = (last_index+1)*2;
-        printf("not more space to store the parameter: %s realloc: %ld\n", str, new_size);
-        *src = realloc(*src, new_size);
-        (**src)[last_index] = NULL;
-        (**src)[new_size-1] = (void*)UINT64_MAX; /* mark the end of the memory block*/
+        *src = reallocz(*src, new_size/2*sizeof(char**), new_size*sizeof(char**));
+        (*src)[last_index] = NULL;
+        (*src)[new_size-1] = (void*)UINT64_MAX; /* mark the end of the memory block*/
         free_index = last_index;
     }
 
-    (**src)[free_index] = calloc(strlen(str)+1, sizeof(char));
-    strcpy((**src)[free_index], str);
+    (*src)[free_index] = calloc(strlen(str)+1, sizeof(char));
+    strcpy((*src)[free_index], str);
 }
 
 size_t parse_input_parameters(
@@ -1022,7 +1033,7 @@ size_t parse_input_parameters(
         /* extract parameter*/
         if(*char_ptr != '-')
         {
-            append_parameter(&(*manipulate_target)+set_index, char_ptr);
+            append_parameter(*manipulate_target+set_index, char_ptr);
             continue;
         }
 
