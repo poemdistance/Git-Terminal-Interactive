@@ -30,8 +30,10 @@
 #define TYPE_OPTION         (1<<2)
 
 #define REMOTE_BRANCH (1<<0)
+#define LOCAL_BRANCH  (1<<1)
 
 typedef struct {
+    size_t interaction_object;
     size_t branch_count;
     char **branch_index;
     size_t *branch_location;
@@ -72,7 +74,7 @@ void repost_menu(MENU **menu, ITEM **items)
     *menu = new_menu(items);
 }
 
-void refresh_menu(WINDOW *win, MENU *menu)
+void refresh_menu(WINDOW *win, MENU *menu, BranchInfo *branch_info)
 {
     set_menu_win(menu, win);
     set_menu_sub(menu, derwin(win, ROW_NUM-WIN_MENU_DIFF_ROW, COL_NUM-5, 4, 2));
@@ -82,7 +84,11 @@ void refresh_menu(WINDOW *win, MENU *menu)
     set_menu_format(menu, ROW_NUM-WIN_MENU_DIFF_ROW, 1); // row, column
 
     box(win, 0, 0);
-    print_in_middle(win, 1, 0, COL_NUM, "Git Branch Tools", COLOR_PAIR(0));
+    if(branch_info->interaction_object & LOCAL_BRANCH_INTERACTION)
+        print_in_middle(win, 1, 0, COL_NUM, "Git Branch Tools (Local)", COLOR_PAIR(0));
+    else
+        print_in_middle(win, 1, 0, COL_NUM, "Git Branch Tools (Remote)", COLOR_PAIR(0));
+
     mvwhline(win, 2, 1, ACS_HLINE, COL_NUM-2);
     mvprintw(LINES-16, 90, "o: checkout to selected branch");
     mvprintw(LINES-15, 90, "d: delete selected branch from local");
@@ -197,7 +203,7 @@ char *choice_interactive( BranchInfo *branch_info)
     /* newwin(int nlines, int ncols, int begin_y, int begin_x)*/
     win = newwin(ROW_NUM, COL_NUM, 5, 12);
     keypad(win, TRUE);
-    refresh_menu(win, menu);
+    refresh_menu(win, menu, branch_info);
     set_current_item(menu, items[branch_info->current_branch_index]);
 
     while((c = wgetch(win)) != KEY_F(1))
@@ -283,7 +289,7 @@ char *choice_interactive( BranchInfo *branch_info)
                     branch_info->branch_operation_mark[choice]);
 
             repost_menu(&menu, items);
-            refresh_menu(win, menu);
+            refresh_menu(win, menu, branch_info);
             set_current_item(menu, items[choice]);
         }
 
@@ -720,6 +726,7 @@ void interactive_delete_branch( char **branch_index, size_t branch_count, size_t
 
 void remote_branch_interation(BranchInfo *remote_branch)
 {
+    remote_branch->interaction_object = REMOTE_BRANCH_INTERACTION;
     char *choice_branch_name = choice_interactive(remote_branch);
 
     if(remote_branch->drop_operation)
@@ -772,6 +779,7 @@ void switch_branch(BranchInfo *branch_info, char *choice_branch_name)
 void local_branch_interaction(BranchInfo *local_branch)
 {
     local_branch->drop_operation = false;
+    local_branch->interaction_object = LOCAL_BRANCH_INTERACTION;
 
     char *choice_branch_name = choice_interactive(local_branch);
 
