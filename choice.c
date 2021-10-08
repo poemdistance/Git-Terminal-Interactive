@@ -143,14 +143,26 @@ void set_branch_hint(MENU *menu,
         char *branch,
         char *branch_hint,
         size_t *branch_hint_extra_size,
-        size_t operation_mark)
+        size_t operation_mark,
+        size_t branch_location)
 {
     strcpy(branch_hint, branch);
     size_t new_extra_hint_size = 0;
     char *del_local_hint = " [del-local]";
     char *del_remote_hint = " [del-remote]";
+    char *remote_hint = " [remote]";
 
     strcpy(branch_hint, branch);
+
+    if(branch_location & REMOTE_BRANCH)
+    {
+        new_extra_hint_size += strlen(remote_hint);
+
+        concat_extra_msg(
+                &branch_hint, remote_hint,
+                branch_hint_extra_size,
+                new_extra_hint_size);
+    }
 
     if(operation_mark & DELETE_LOCAL_BRANCH_BIT)
     {
@@ -175,6 +187,29 @@ void set_branch_hint(MENU *menu,
     set_item_name(current_item(menu), branch_hint);
 }
 
+ITEM *new_item_with_hint(BranchInfo *branch_info, size_t index)
+{
+    size_t new_extra_hint_size = 0;
+    char *remote_hint = " [remote]";
+
+    strcpy(branch_info->branch_index_hint[index], branch_info->branch_index[index]);
+
+    if(branch_info->branch_location[index] & REMOTE_BRANCH)
+    {
+        new_extra_hint_size += strlen(remote_hint);
+
+        concat_extra_msg(
+                &(branch_info->branch_index_hint[index]),
+                remote_hint,
+                &(branch_info->branch_index_hint_extra_size[index]),
+                new_extra_hint_size);
+    }
+
+    return new_item(
+            branch_info->branch_index_hint[index],
+            branch_info->branch_index_hint[index]);
+}
+
 char *choice_interactive( BranchInfo *branch_info)
 {
     MENU *menu;
@@ -196,7 +231,7 @@ char *choice_interactive( BranchInfo *branch_info)
 
     items = calloc(branch_info->branch_count+1, sizeof(ITEM *));
     for(size_t i=0; i<branch_info->branch_count; i++)
-        items[i] = new_item(branch_info->branch_index[i], branch_info->branch_index[i]);
+        items[i] = new_item_with_hint(branch_info, i);
 
     menu = new_menu((ITEM **)items);
 
@@ -286,7 +321,8 @@ char *choice_interactive( BranchInfo *branch_info)
                     branch_info->branch_index[choice],
                     branch_info->branch_index_hint[choice],
                     &(branch_info->branch_index_hint_extra_size[choice]),
-                    branch_info->branch_operation_mark[choice]);
+                    branch_info->branch_operation_mark[choice],
+                    branch_info->branch_location[choice]);
 
             repost_menu(&menu, items);
             refresh_menu(win, menu, branch_info);
@@ -581,11 +617,7 @@ int parse_raw_output_of_git_branch( char *raw_buf, BranchInfo *branch_info)
                 continue;
             }
 
-            char *remote_hint = " [remote]";
             size_t branch_name_size = strlen(branch_name_start) + 1;
-            if(branch_info->branch_location[branch_info->branch_count] & REMOTE_BRANCH)
-                branch_name_size = strlen(branch_name_start) + strlen(remote_hint) + 1;
-
             branch_index[branch_info->branch_count] 
                 = calloc(sizeof(char), branch_name_size);
 
@@ -594,8 +626,6 @@ int parse_raw_output_of_git_branch( char *raw_buf, BranchInfo *branch_info)
 
             dup_branch_index_extra_size[branch_info->branch_count] = BRANCH_EXTRA_HINT_SIZE;
             strcpy(branch_index[branch_info->branch_count], branch_name_start);
-            if(branch_info->branch_location[branch_info->branch_count] & REMOTE_BRANCH)
-                strcat(branch_index[branch_info->branch_count], remote_hint);
 
             branch_info->branch_count++;
 
