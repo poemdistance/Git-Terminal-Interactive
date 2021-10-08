@@ -1216,6 +1216,7 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
                 goto exit;
             case DELETE_BRANCH_INTERACTION:
                 command_line_delete_branch(object_set, manipulate_target);
+                break;
             case UPDATE_BRANCH_INFO:
                 command_line_update_branch_info(object_set);
                 break;
