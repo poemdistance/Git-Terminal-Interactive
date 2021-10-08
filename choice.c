@@ -148,7 +148,7 @@ void concat_extra_msg(
     if(new_extra_size > *origin_extra_size)
     {
         size_t new_size = (*origin_extra_size * 2) + new_extra_size;
-        *src = realloc(*src, new_size);
+        *src = reallocz(*src, *origin_extra_size, new_size);
         *origin_extra_size = new_size;
     }
 
@@ -438,7 +438,7 @@ int get_raw_output_from_git_branch(char *git_command, char **input_buf)
         if(offset+read_size >= current_raw_size)
         {
             current_raw_size *= 2;
-            *input_buf = raw_buf = realloc(raw_buf, current_raw_size);
+            *input_buf = raw_buf = reallocz(raw_buf, current_raw_size/2, current_raw_size);
             /* printf("raw_buff: no more space to hold the pipeline text, alloc large memory" */
             /*         ", realloc size: %zu\n", current_raw_size); */
         }
@@ -518,18 +518,26 @@ int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
             {
                 max_branch_size *= 2;
                 branch_info->branch_index = branch_index =
-                    realloc(branch_index, max_branch_size*sizeof(char*));
+                    reallocz(branch_index,
+                            max_branch_size*sizeof(char*)/2,
+                            max_branch_size*sizeof(char*));
 
                 branch_info->branch_index_hint = dup_branch_index =
-                    realloc(dup_branch_index, max_branch_size*sizeof(char*));
+                    reallocz(dup_branch_index,
+                            max_branch_size*sizeof(char*)/2,
+                            max_branch_size*sizeof(char*));
 
                 branch_info->branch_index_hint_extra_size = dup_branch_index_extra_size =
-                    realloc(dup_branch_index_extra_size, max_branch_size*sizeof(size_t));
+                    reallocz(dup_branch_index_extra_size,
+                            max_branch_size*sizeof(size_t)/2,
+                            max_branch_size*sizeof(size_t));
 
                 branch_info->branch_location =
-                    realloc(branch_info->branch_location, max_branch_size);
+                    reallocz(branch_info->branch_location,
+                            max_branch_size*sizeof(size_t)/2,
+                            max_branch_size*sizeof(size_t));
 
-                /* printf("branch count > max branch size, realloc branch size: %ld\n", */
+                /* printf("branch count > max branch size, reallocz branch size: %ld\n", */
                 /*         max_branch_size); */
             }
         }
@@ -666,19 +674,27 @@ int parse_raw_output_of_git_branch( char *raw_buf, BranchInfo *branch_info)
             {
                 max_branch_size *= 2;
                 branch_info->branch_index = branch_index = 
-                    realloc(branch_index, max_branch_size*sizeof(char*));
+                    reallocz(branch_index,
+                            max_branch_size*sizeof(char*)/2,
+                            max_branch_size*sizeof(char*));
 
                 branch_info->branch_index_hint = dup_branch_index =
-                    realloc(dup_branch_index, max_branch_size*sizeof(char*));
+                    reallocz(dup_branch_index,
+                            max_branch_size*sizeof(char*)/2,
+                            max_branch_size*sizeof(char*));
 
                 branch_info->branch_index_hint_extra_size = dup_branch_index_extra_size =
-                    realloc(dup_branch_index_extra_size, max_branch_size*sizeof(size_t));
+                    reallocz(dup_branch_index_extra_size,
+                            max_branch_size*sizeof(size_t)/2,
+                            max_branch_size*sizeof(size_t));
 
                 branch_info->branch_location =
-                    realloc(branch_info->branch_location, max_branch_size);
+                    reallocz(branch_info->branch_location,
+                            max_branch_size*sizeof(size_t)/2,
+                            max_branch_size*sizeof(size_t));
 
-                /* printf("branch count > max branch size, realloc branch size: %ld\n", */
-                /*         max_branch_size); */
+                printf("branch count > max branch size, reallocz branch size: %ld\n",
+                        max_branch_size);
             }
         }
 
