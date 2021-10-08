@@ -32,7 +32,7 @@
 #define REMOTE_BRANCH (1<<0)
 #define LOCAL_BRANCH  (1<<1)
 
-typedef struct {
+typedef struct BranchInfo {
     size_t interaction_object;
     size_t branch_count;
     char **branch_index;
@@ -42,6 +42,8 @@ typedef struct {
     size_t current_branch_index;
     size_t *branch_operation_mark;
     bool drop_operation;
+    struct BranchInfo *local_branch;
+    struct BranchInfo *remote_branch;
 } BranchInfo;
 
 void print_in_middle(WINDOW *win, int y, int startx, int width, char *string, chtype color) {
@@ -754,27 +756,6 @@ void interactive_delete_branch( char **branch_index, size_t branch_count, size_t
     }
 }
 
-void remote_branch_interation(BranchInfo *remote_branch)
-{
-    remote_branch->interaction_object = REMOTE_BRANCH_INTERACTION;
-    char *choice_branch_name = choice_interactive(remote_branch);
-
-    if(remote_branch->drop_operation)
-        goto exit;
-    else
-        goto commit_operation;
-
-commit_operation:
-
-    interactive_delete_branch(
-            remote_branch->branch_index,
-            remote_branch->branch_count,
-            remote_branch->branch_operation_mark);
-
-exit:
-    return;
-}
-
 bool create_branch_if_not_exists(BranchInfo *branch_info, char *branch_name)
 {
     char *real_branch_name = NULL;
@@ -804,6 +785,29 @@ void switch_branch(BranchInfo *branch_info, char *choice_branch_name)
     printf("switch_branch: %s\n", choice_branch_name);
 
     command_execute("git checkout ", real_branch_name, NULL);
+}
+
+void remote_branch_interation(BranchInfo *remote_branch)
+{
+    remote_branch->interaction_object = REMOTE_BRANCH_INTERACTION;
+    char *choice_branch_name = choice_interactive(remote_branch);
+
+    if(remote_branch->drop_operation)
+        goto exit;
+    else
+        goto commit_operation;
+
+commit_operation:
+
+    interactive_delete_branch(
+            remote_branch->branch_index,
+            remote_branch->branch_count,
+            remote_branch->branch_operation_mark);
+
+    switch_branch(remote_branch->local_branch, choice_branch_name);
+
+exit:
+    return;
 }
 
 void local_branch_interaction(BranchInfo *local_branch)
@@ -1063,6 +1067,12 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
 
     get_all_branch_name( "git branch -a", parse_raw_output_of_git_branch, &local_branch);
     get_all_branch_name( "git branch -r", parse_raw_output_of_git_branch_r, &remote_branch);
+
+    local_branch.local_branch = &local_branch;
+    local_branch.remote_branch = &remote_branch;
+    remote_branch.local_branch = &local_branch;
+    remote_branch.remote_branch = &remote_branch;
+
 
     /* default manipulate local branch*/
     if(!object_set)
