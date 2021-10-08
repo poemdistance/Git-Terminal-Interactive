@@ -730,6 +730,42 @@ void update_remote_references()
     command_execute("git fetch --all --prune", NULL);
 }
 
+char *try_to_get_main_branch(BranchInfo *branch_info, char *exclude_branch)
+{
+    char *branch_name = NULL;
+    bool found_main_branch = false;
+    for(size_t i=0; i<branch_info->branch_count; i++)
+    {
+        branch_name = get_real_branch_name(branch_info->branch_index[i]);
+        if(strcmp(branch_name, "master") == 0)
+        {
+            found_main_branch = true;
+            break;
+        }
+        else if(strcmp(branch_name, "main") == 0)
+        {
+            found_main_branch = true;
+            break;
+        }
+    }
+
+    /* return founded main branch*/
+    if(found_main_branch)
+        return branch_name;
+
+    /* not found main branch, select another branch which first met*/
+    for(size_t i=0; i<branch_info->branch_count; i++)
+    {
+        branch_name = get_real_branch_name(branch_info->branch_index[i]);
+        if(strcmp(branch_name, exclude_branch) == 0)
+            continue;
+
+        return branch_name;
+    }
+
+    return NULL;
+}
+
 void interactive_delete_branch(BranchInfo *branch_info)
 {
     char *interactive_delete_branch_name = NULL;
@@ -762,11 +798,24 @@ void interactive_delete_branch(BranchInfo *branch_info)
             interactive_delete_branch_name =
                 get_real_branch_name(branch_info->branch_index[i]);
 
-            if(git_command == delete_local_branch_command 
-                    && branch_info->branch_index[i][0] == '*')
+            /* try to switch to another branch before delete current branch*/
+            if(branch_info->current_branch_index == i
+                    && (branch_info->interaction_object & LOCAL_BRANCH_INTERACTION))
             {
-                fprintf(stderr, "delete current local branch is forbbiden, skipping...\n");
-                continue;
+                printf("delete target is current branch, try to checkout to master/main\n");
+
+                char *main_branch =
+                    try_to_get_main_branch(branch_info, interactive_delete_branch_name);
+
+                if(main_branch)
+                {
+                    command_execute( "git checkout ", main_branch, NULL);
+                }
+                else
+                {
+                    fprintf(stderr, "try to switch to another branch failed.\n");
+                    continue;
+                }
             }
 
             command_execute(git_command, interactive_delete_branch_name, NULL);
