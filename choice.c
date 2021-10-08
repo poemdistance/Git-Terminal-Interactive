@@ -799,8 +799,8 @@ void interactive_delete_branch(BranchInfo *branch_info)
                 get_real_branch_name(branch_info->branch_index[i]);
 
             /* try to switch to another branch before delete current branch*/
-            if(branch_info->current_branch_index == i
-                    && (branch_info->interaction_object & LOCAL_BRANCH_INTERACTION))
+            if(branch_info->current_branch_index == i 
+                    && git_command = delete_local_branch_command)
             {
                 printf("delete target is current branch, try to checkout to master/main\n");
 
@@ -808,9 +808,7 @@ void interactive_delete_branch(BranchInfo *branch_info)
                     try_to_get_main_branch(branch_info, interactive_delete_branch_name);
 
                 if(main_branch)
-                {
                     command_execute( "git checkout ", main_branch, NULL);
-                }
                 else
                 {
                     fprintf(stderr, "try to switch to another branch failed.\n");
