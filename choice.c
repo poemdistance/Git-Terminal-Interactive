@@ -5,6 +5,7 @@
 #include <curses.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <time.h>
 
 #define ROW_NUM 20
 #define COL_NUM 64
@@ -780,7 +781,12 @@ char *try_to_get_main_branch(BranchInfo *branch_info, char *exclude_branch)
 bool prepare_work_of_branch_delete(BranchInfo *branch_info, char *delete_target)
 {
     if(!branch_is_clean(branch_info))
-        command_execute("git stash -m \"", "generated in deleteing ", delete_target, "\"", NULL);
+    {
+        time_t current_time;
+        time(&current_time);
+        command_execute("git stash -m \"", "generated in deleting ",
+                delete_target, ctime(&current_time), "\"", NULL);
+    }
 
     printf("delete target is current branch, try to checkout to master/main\n");
 
