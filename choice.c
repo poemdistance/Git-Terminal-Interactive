@@ -730,24 +730,24 @@ void update_remote_references()
     command_execute("git fetch --all --prune", NULL);
 }
 
-void interactive_delete_branch( char **branch_index, size_t branch_count, size_t *branch_operation_mark)
+void interactive_delete_branch(BranchInfo *branch_info)
 {
     char *interactive_delete_branch_name = NULL;
     char *git_command = NULL;
     char *delete_remote_branch_command = "git push origin --delete ";
     char *delete_local_branch_command = "git branch -D ";
-    for(size_t i=0; i<branch_count; i++)
+    for(size_t i=0; i<branch_info->branch_count; i++)
     {
-        if(!branch_operation_mark[i])
+        if(!branch_info->branch_operation_mark[i])
             continue;
 
         for(short bit=0; bit<64; bit++)
         {
             /* no operation mark, break to check next branch*/
-            if(!branch_operation_mark[i])
+            if(!branch_info->branch_operation_mark[i])
                 break;
 
-            switch(get_and_reset_bit(&(branch_operation_mark[i]), 1 << bit))
+            switch(get_and_reset_bit(&(branch_info->branch_operation_mark[i]), 1 << bit))
             {
                 case DELETE_LOCAL_BRANCH_BIT:
                     git_command = delete_local_branch_command;
@@ -759,9 +759,11 @@ void interactive_delete_branch( char **branch_index, size_t branch_count, size_t
                     continue;
             }
 
-            interactive_delete_branch_name = get_real_branch_name(branch_index[i]);
+            interactive_delete_branch_name =
+                get_real_branch_name(branch_info->branch_index[i]);
 
-            if(git_command == delete_local_branch_command && branch_index[i][0] == '*')
+            if(git_command == delete_local_branch_command 
+                    && branch_info->branch_index[i][0] == '*')
             {
                 fprintf(stderr, "delete current local branch is forbbiden, skipping...\n");
                 continue;
@@ -815,10 +817,7 @@ void remote_branch_interation(BranchInfo *remote_branch)
 
 commit_operation:
 
-    interactive_delete_branch(
-            remote_branch->branch_index,
-            remote_branch->branch_count,
-            remote_branch->branch_operation_mark);
+    interactive_delete_branch(remote_branch);
 
     switch_branch(remote_branch->local_branch, choice_branch_name);
 
@@ -845,10 +844,7 @@ commit_operation:
 
     switch_branch(local_branch, choice_branch_name);
 
-    interactive_delete_branch(
-            local_branch->branch_index,
-            local_branch->branch_count,
-            local_branch->branch_operation_mark);
+    interactive_delete_branch(local_branch);
 
 exit:
     return;
