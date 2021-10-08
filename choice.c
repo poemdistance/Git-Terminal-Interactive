@@ -194,7 +194,7 @@ ITEM *new_item_with_hint(BranchInfo *branch_info, size_t index)
 
     strcpy(branch_info->branch_index_hint[index], branch_info->branch_index[index]);
 
-    if(branch_info->branch_location[index] & REMOTE_BRANCH)
+    if(branch_info->branch_location && branch_info->branch_location[index] & REMOTE_BRANCH)
     {
         new_extra_hint_size += strlen(remote_hint);
 
@@ -1075,8 +1075,11 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
         {
             if(!object_set)
                 break;
+
             switch(get_and_reset_bit(&object_set, 1<<i))
             {
+                case 0:
+                    break;
                 case REMOTE_BRANCH_INTERACTION:
                     if(last_input_branch)
                     {
@@ -1147,6 +1150,9 @@ exit:
 
         if(branch_infos[j]->branch_operation_mark)
             free(branch_infos[j]->branch_operation_mark);
+
+        if(branch_infos[j]->branch_location)
+            free(branch_infos[j]->branch_location);
     }
 
     return;
