@@ -785,7 +785,7 @@ bool prepare_work_of_branch_delete(BranchInfo *branch_info, char *delete_target)
         time_t current_time;
         time(&current_time);
         command_execute("git stash -m \"", "generated in deleting ",
-                delete_target, ctime(&current_time), "\"", NULL);
+                delete_target, " ", ctime(&current_time), "\"", NULL);
     }
 
     printf("delete target is current branch, try to checkout to master/main\n");
