@@ -1119,7 +1119,10 @@ void create_remote_branch(char *branch_name)
         free(raw_buf);
 }
 
-void command_line_delete_branch(size_t object_set, char **manipulate_target)
+void command_line_delete_branch(
+        BranchInfo *branch_info,
+        size_t object_set,
+        char **manipulate_target)
 {
     for(size_t i=0; manipulate_target[i] != (void*)UINT64_MAX; i++)
     {
@@ -1130,7 +1133,10 @@ void command_line_delete_branch(size_t object_set, char **manipulate_target)
             command_execute("git push origin --delete ", manipulate_target[i], NULL);
 
         if(object_set & LOCAL_BRANCH_INTERACTION)
+        {
+            prepare_work_of_branch_delete(branch_info, manipulate_target[i]);
             command_execute("git branch -D ", manipulate_target[i], NULL);
+        }
     }
 }
 
@@ -1215,7 +1221,7 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
                 print_help_msg();
                 goto exit;
             case DELETE_BRANCH_INTERACTION:
-                command_line_delete_branch(object_set, manipulate_target);
+                command_line_delete_branch(&local_branch, object_set, manipulate_target);
                 break;
             case UPDATE_BRANCH_INFO:
                 command_line_update_branch_info(object_set);
