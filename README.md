@@ -1,6 +1,6 @@
 # Git Terminal Interactive
 
-![local-interaction-pannel]("https://github.com/poemdistance/Git-Terminal-Interactive/blob/add_picture/interaction_pannel.png" 'local-interaction-pannel')
+![local-interaction-pannel]("https://github.com/poemdistance/Git-Terminal-Interactive/blob/add_picture/interaction_pannel.png?raw=true" 'local-interaction-pannel')
 
 ### Dependencies
 
