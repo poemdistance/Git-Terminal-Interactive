@@ -142,19 +142,16 @@ size_t get_bit(size_t src, size_t bit)
 void concat_extra_msg(
         char **src,
         char *extra_msg,
+        size_t base_size,
         size_t *origin_extra_size,
         size_t new_extra_size)
 {
-    printf(" new_extra_size: %ld origin_extra_size: %ld\n", new_extra_size, *origin_extra_size);
     if(new_extra_size > *origin_extra_size)
     {
-        printf("concat reallocz memory, new_extra_size: %ld origin_extra_size: %ld\n", new_extra_size, *origin_extra_size);
-        size_t new_size = (*origin_extra_size * 2) + new_extra_size;
-        *src = reallocz(*src, *origin_extra_size, new_size);
-        *origin_extra_size = new_size;
+        size_t final_extra_size = (*origin_extra_size * 2) + new_extra_size;
+        *src = reallocz(*src, *origin_extra_size + base_size, final_extra_size + base_size);
+        *origin_extra_size = final_extra_size;
     }
-
-    printf("in concat addr: src: %p *src: %p\n", src, *src);
 
     strcat(*src, extra_msg);
 }
@@ -171,8 +168,7 @@ void set_branch_hint(MENU *menu,
     char *del_remote_hint = " [del-remote]";
     char *remote_hint = " [remote]";
 
-    printf("pass_addr: %p *pass_addr:%p\n", branch_hint, *branch_hint);
-
+    size_t base_size = strlen(branch)+1;
     strcpy(*branch_hint, branch);
 
     if(branch_location & REMOTE_BRANCH)
@@ -180,7 +176,9 @@ void set_branch_hint(MENU *menu,
         new_extra_hint_size += strlen(remote_hint);
 
         concat_extra_msg(
-                branch_hint, remote_hint,
+                branch_hint,
+                remote_hint,
+                base_size,
                 branch_hint_extra_size,
                 new_extra_hint_size);
     }
@@ -189,21 +187,22 @@ void set_branch_hint(MENU *menu,
     {
         new_extra_hint_size += strlen(del_local_hint);
 
-        concat_extra_msg(branch_hint,
+        concat_extra_msg(
+                branch_hint,
                 del_local_hint,
+                base_size,
                 branch_hint_extra_size,
                 new_extra_hint_size);
-
-        printf("after concat pass_addr: %p *pass_addr:%p\n", branch_hint, *branch_hint);
-
     }
 
     if(operation_mark & DELETE_REMOTE_BRANCH_BIT)
     {
         new_extra_hint_size += strlen(del_remote_hint);
 
-        concat_extra_msg(branch_hint,
+        concat_extra_msg(
+                branch_hint,
                 del_remote_hint,
+                base_size,
                 branch_hint_extra_size,
                 new_extra_hint_size);
     }
@@ -216,6 +215,7 @@ ITEM *new_item_with_hint(BranchInfo *branch_info, size_t index)
     size_t new_extra_hint_size = 0;
     char *remote_hint = " [remote]";
 
+    size_t base_size = strlen(branch_info->branch_index[index]) + 1;
     strcpy(branch_info->branch_index_hint[index], branch_info->branch_index[index]);
 
     if(branch_info->branch_location && branch_info->branch_location[index] & REMOTE_BRANCH)
@@ -225,6 +225,7 @@ ITEM *new_item_with_hint(BranchInfo *branch_info, size_t index)
         concat_extra_msg(
                 &(branch_info->branch_index_hint[index]),
                 remote_hint,
+                base_size,
                 &(branch_info->branch_index_hint_extra_size[index]),
                 new_extra_hint_size);
     }
@@ -340,11 +341,6 @@ char *choice_interactive( BranchInfo *branch_info)
         if(need_to_refresh_menu)
         {
             need_to_refresh_menu = false;
-
-            printf("src_addr:%p chocie: %p inner_value: %p\n",
-                    branch_info->branch_index_hint,
-                    &(branch_info->branch_index_hint[choice]),
-                    branch_info->branch_index_hint[choice]);
 
             set_branch_hint(menu,
                     branch_info->branch_index[choice],
