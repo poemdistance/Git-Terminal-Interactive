@@ -24,7 +24,7 @@
 #define ARGUMENT_FIRST        (1<<0)
 #define OPTION_FRIST          (1<<1)
 
-#define BRANCH_EXTRA_HINT_SIZE (1024)
+#define BRANCH_EXTRA_HINT_SIZE (1)
 
 #define TYPE_EXECUTE_FILE   (1<<0)
 #define TYPE_PARAMETER      (1<<1)
@@ -145,12 +145,16 @@ void concat_extra_msg(
         size_t *origin_extra_size,
         size_t new_extra_size)
 {
+    printf(" new_extra_size: %ld origin_extra_size: %ld\n", new_extra_size, *origin_extra_size);
     if(new_extra_size > *origin_extra_size)
     {
+        printf("concat reallocz memory, new_extra_size: %ld origin_extra_size: %ld\n", new_extra_size, *origin_extra_size);
         size_t new_size = (*origin_extra_size * 2) + new_extra_size;
         *src = reallocz(*src, *origin_extra_size, new_size);
         *origin_extra_size = new_size;
     }
+
+    printf("in concat addr: src: %p *src: %p\n", src, *src);
 
     strcat(*src, extra_msg);
 }
@@ -166,6 +170,8 @@ void set_branch_hint(MENU *menu,
     char *del_local_hint = " [del-local]";
     char *del_remote_hint = " [del-remote]";
     char *remote_hint = " [remote]";
+
+    printf("pass_addr: %p *pass_addr:%p\n", branch_hint, *branch_hint);
 
     strcpy(*branch_hint, branch);
 
@@ -187,6 +193,9 @@ void set_branch_hint(MENU *menu,
                 del_local_hint,
                 branch_hint_extra_size,
                 new_extra_hint_size);
+
+        printf("after concat pass_addr: %p *pass_addr:%p\n", branch_hint, *branch_hint);
+
     }
 
     if(operation_mark & DELETE_REMOTE_BRANCH_BIT)
@@ -332,6 +341,11 @@ char *choice_interactive( BranchInfo *branch_info)
         {
             need_to_refresh_menu = false;
 
+            printf("src_addr:%p chocie: %p inner_value: %p\n",
+                    branch_info->branch_index_hint,
+                    &(branch_info->branch_index_hint[choice]),
+                    branch_info->branch_index_hint[choice]);
+
             set_branch_hint(menu,
                     branch_info->branch_index[choice],
                     &(branch_info->branch_index_hint[choice]),
@@ -386,7 +400,7 @@ int get_raw_output_from_git_branch(char *git_command, char **input_buf)
         exit(1);
     }
 
-#define BASE_READ_SIZE 1024
+#define BASE_READ_SIZE 1
 
     char read_buf[BASE_READ_SIZE] = { '\0' };
     size_t read_size = 0;
@@ -487,7 +501,7 @@ bool branch_is_stored(BranchInfo *branch_info, char *checking_branch)
 
 int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
 {
-#define BASE_BRANCH_SIZE_R 6
+#define BASE_BRANCH_SIZE_R 1
     size_t branch_count = 0;
     size_t max_branch_size = BASE_BRANCH_SIZE_R;
     char **branch_index = calloc(BASE_BRANCH_SIZE_R, sizeof(char*));
@@ -604,7 +618,7 @@ char *exclude_remote_prefix(char *branch_name)
 
 int parse_raw_output_of_git_branch( char *raw_buf, BranchInfo *branch_info)
 {
-#define BASE_BRANCH_SIZE 6
+#define BASE_BRANCH_SIZE 1
     size_t max_branch_size = BASE_BRANCH_SIZE;
     char **branch_index = calloc(BASE_BRANCH_SIZE, sizeof(char*));
     char **dup_branch_index = calloc(BASE_BRANCH_SIZE, sizeof(char*));

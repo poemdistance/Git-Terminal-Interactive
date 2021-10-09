@@ -6,3 +6,4 @@ cscope.in.out
 a.out
 test.c
 .vscode
+valgrind.check
