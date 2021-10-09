@@ -387,7 +387,7 @@ int get_raw_output_from_git_branch(char *git_command, char **input_buf)
         exit(1);
     }
 
-#define BASE_READ_SIZE 1024
+#define BASE_READ_SIZE 1
 
     char read_buf[BASE_READ_SIZE] = { '\0' };
     size_t read_size = 0;
@@ -488,14 +488,14 @@ bool branch_is_stored(BranchInfo *branch_info, char *checking_branch)
 
 int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
 {
-    size_t base_branch_size = 6;
+#define BASE_BRANCH_SIZE_R 1
     size_t branch_count = 0;
-    size_t max_branch_size = base_branch_size;
-    char **branch_index = calloc(base_branch_size, sizeof(char*));
-    char **dup_branch_index = calloc(base_branch_size, sizeof(char*));
-    size_t *dup_branch_index_extra_size = calloc(base_branch_size, sizeof(size_t));
+    size_t max_branch_size = BASE_BRANCH_SIZE_R;
+    char **branch_index = calloc(BASE_BRANCH_SIZE_R, sizeof(char*));
+    char **dup_branch_index = calloc(BASE_BRANCH_SIZE_R, sizeof(char*));
+    size_t *dup_branch_index_extra_size = calloc(BASE_BRANCH_SIZE_R, sizeof(size_t));
 
-    branch_info->branch_location = calloc(base_branch_size, sizeof(size_t));
+    branch_info->branch_location = calloc(BASE_BRANCH_SIZE_R, sizeof(size_t));
 
     /* update the address pointed to by input_buf*/
     branch_info->branch_index = branch_index;
@@ -605,13 +605,13 @@ char *exclude_remote_prefix(char *branch_name)
 
 int parse_raw_output_of_git_branch( char *raw_buf, BranchInfo *branch_info)
 {
-    size_t base_branch_size = 6;
-    size_t max_branch_size = base_branch_size;
-    char **branch_index = calloc(base_branch_size, sizeof(char*));
-    char **dup_branch_index = calloc(base_branch_size, sizeof(char*));
-    size_t *dup_branch_index_extra_size = calloc(base_branch_size, sizeof(size_t));
+#define BASE_BRANCH_SIZE 1
+    size_t max_branch_size = BASE_BRANCH_SIZE;
+    char **branch_index = calloc(BASE_BRANCH_SIZE, sizeof(char*));
+    char **dup_branch_index = calloc(BASE_BRANCH_SIZE, sizeof(char*));
+    size_t *dup_branch_index_extra_size = calloc(BASE_BRANCH_SIZE, sizeof(size_t));
 
-    branch_info->branch_location = calloc(base_branch_size, sizeof(size_t));
+    branch_info->branch_location = calloc(BASE_BRANCH_SIZE, sizeof(size_t));
 
     branch_info->branch_index = branch_index;
     branch_info->branch_index_hint = dup_branch_index;
