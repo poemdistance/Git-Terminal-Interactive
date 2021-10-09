@@ -1,5 +1,7 @@
 # Git Terminal Interactive
 
+![img]("./interaction_pannel.png")
+
 ### Dependencies
 
     ncurses library
