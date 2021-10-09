@@ -157,25 +157,24 @@ void concat_extra_msg(
 
 void set_branch_hint(MENU *menu,
         char *branch,
-        char *branch_hint,
+        char **branch_hint,
         size_t *branch_hint_extra_size,
         size_t operation_mark,
         size_t branch_location)
 {
-    strcpy(branch_hint, branch);
     size_t new_extra_hint_size = 0;
     char *del_local_hint = " [del-local]";
     char *del_remote_hint = " [del-remote]";
     char *remote_hint = " [remote]";
 
-    strcpy(branch_hint, branch);
+    strcpy(*branch_hint, branch);
 
     if(branch_location & REMOTE_BRANCH)
     {
         new_extra_hint_size += strlen(remote_hint);
 
         concat_extra_msg(
-                &branch_hint, remote_hint,
+                branch_hint, remote_hint,
                 branch_hint_extra_size,
                 new_extra_hint_size);
     }
@@ -184,7 +183,7 @@ void set_branch_hint(MENU *menu,
     {
         new_extra_hint_size += strlen(del_local_hint);
 
-        concat_extra_msg(&branch_hint,
+        concat_extra_msg(branch_hint,
                 del_local_hint,
                 branch_hint_extra_size,
                 new_extra_hint_size);
@@ -194,13 +193,13 @@ void set_branch_hint(MENU *menu,
     {
         new_extra_hint_size += strlen(del_remote_hint);
 
-        concat_extra_msg(&branch_hint,
+        concat_extra_msg(branch_hint,
                 del_remote_hint,
                 branch_hint_extra_size,
                 new_extra_hint_size);
     }
 
-    set_item_name(current_item(menu), branch_hint);
+    set_item_name(current_item(menu), *branch_hint);
 }
 
 ITEM *new_item_with_hint(BranchInfo *branch_info, size_t index)
@@ -335,7 +334,7 @@ char *choice_interactive( BranchInfo *branch_info)
 
             set_branch_hint(menu,
                     branch_info->branch_index[choice],
-                    branch_info->branch_index_hint[choice],
+                    &(branch_info->branch_index_hint[choice]),
                     &(branch_info->branch_index_hint_extra_size[choice]),
                     branch_info->branch_operation_mark[choice],
                     branch_info->branch_location[choice]);
