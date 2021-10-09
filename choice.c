@@ -24,7 +24,7 @@
 #define ARGUMENT_FIRST        (1<<0)
 #define OPTION_FRIST          (1<<1)
 
-#define BRANCH_EXTRA_HINT_SIZE (1)
+#define BRANCH_EXTRA_HINT_SIZE (1024)
 
 #define TYPE_EXECUTE_FILE   (1<<0)
 #define TYPE_PARAMETER      (1<<1)
@@ -497,7 +497,7 @@ bool branch_is_stored(BranchInfo *branch_info, char *checking_branch)
 
 int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
 {
-#define BASE_BRANCH_SIZE_R 1
+#define BASE_BRANCH_SIZE_R 6
     size_t branch_count = 0;
     size_t max_branch_size = BASE_BRANCH_SIZE_R;
     char **branch_index = calloc(BASE_BRANCH_SIZE_R, sizeof(char*));
@@ -614,7 +614,7 @@ char *exclude_remote_prefix(char *branch_name)
 
 int parse_raw_output_of_git_branch( char *raw_buf, BranchInfo *branch_info)
 {
-#define BASE_BRANCH_SIZE 1
+#define BASE_BRANCH_SIZE 6
     size_t max_branch_size = BASE_BRANCH_SIZE;
     char **branch_index = calloc(BASE_BRANCH_SIZE, sizeof(char*));
     char **dup_branch_index = calloc(BASE_BRANCH_SIZE, sizeof(char*));
