@@ -396,7 +396,7 @@ int get_raw_output_from_git_branch(char *git_command, char **input_buf)
         exit(1);
     }
 
-#define BASE_READ_SIZE 1
+#define BASE_READ_SIZE 1024
 
     char read_buf[BASE_READ_SIZE] = { '\0' };
     size_t read_size = 0;
