@@ -387,7 +387,7 @@ int get_raw_output_from_git_branch(char *git_command, char **input_buf)
         exit(1);
     }
 
-#define BASE_READ_SIZE 1
+#define BASE_READ_SIZE 1024
 
     char read_buf[BASE_READ_SIZE] = { '\0' };
     size_t read_size = 0;
@@ -488,7 +488,7 @@ bool branch_is_stored(BranchInfo *branch_info, char *checking_branch)
 
 int parse_raw_output_of_git_branch_r( char *raw_buf, BranchInfo *branch_info)
 {
-#define BASE_BRANCH_SIZE_R 1
+#define BASE_BRANCH_SIZE_R 6
     size_t branch_count = 0;
     size_t max_branch_size = BASE_BRANCH_SIZE_R;
     char **branch_index = calloc(BASE_BRANCH_SIZE_R, sizeof(char*));
@@ -605,7 +605,7 @@ char *exclude_remote_prefix(char *branch_name)
 
 int parse_raw_output_of_git_branch( char *raw_buf, BranchInfo *branch_info)
 {
-#define BASE_BRANCH_SIZE 1
+#define BASE_BRANCH_SIZE 6
     size_t max_branch_size = BASE_BRANCH_SIZE;
     char **branch_index = calloc(BASE_BRANCH_SIZE, sizeof(char*));
     char **dup_branch_index = calloc(BASE_BRANCH_SIZE, sizeof(char*));
