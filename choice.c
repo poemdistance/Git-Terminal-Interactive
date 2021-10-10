@@ -106,15 +106,15 @@ void refresh_menu(WINDOW *win, MENU *menu, BranchInfo *branch_info)
         print_in_middle(win, 1, 0, COL_NUM, "Git Branch Tools (Remote)", COLOR_PAIR(0));
 
     mvwhline(win, 2, 1, ACS_HLINE, COL_NUM-2);
-    mvprintw(LINES-16, 90, "o: checkout to selected branch");
-    mvprintw(LINES-15, 90, "d: delete selected branch from local");
-    mvprintw(LINES-14, 90, "r: remove selected branch from remote");
-    mvprintw(LINES-13, 90, "k: key up");
-    mvprintw(LINES-12, 90, "j: key down");
-    mvprintw(LINES-11, 90, "a: drop/abort all operation and exit");
-    mvprintw(LINES-10, 90, "g: jump to fist branch");
-    mvprintw(LINES-9,  90, "G: jump to last branch");
-    mvprintw(LINES-8,  90, "q/enter: exit and commit all operation");
+    mvprintw(17, 90, "o: checkout to selected branch");
+    mvprintw(18, 90, "d: delete selected branch from local");
+    mvprintw(19, 90, "r: remove selected branch from remote");
+    mvprintw(20, 90, "k: key up");
+    mvprintw(21, 90, "j: key down");
+    mvprintw(22, 90, "a: drop/abort all operation and exit");
+    mvprintw(23, 90, "g: jump to fist branch");
+    mvprintw(24, 90, "G: jump to last branch");
+    mvprintw(25, 90, "q/enter: exit and commit all operation");
 
     refresh();
 
