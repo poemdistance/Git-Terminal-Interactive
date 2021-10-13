@@ -21,6 +21,7 @@
 #define HELP_MSG                    (1<<0)
 #define DELETE_BRANCH_INTERACTION   (1<<1)
 #define UPDATE_BRANCH_INFO          (1<<2)
+#define MERGE_BRANCH_INTERACTION    (1<<3)
 
 #define ARGUMENT_FIRST        (1<<0)
 #define OPTION_FRIST          (1<<1)
@@ -1083,6 +1084,8 @@ size_t parse_input_parameters(
                     (*feature_set)[set_index] |= UPDATE_BRANCH_INFO;          break;
                 case 'h':
                     (*feature_set)[set_index] |= HELP_MSG;                    break;
+                case 'm':
+                    (*feature_set)[set_index] |= MERGE_BRANCH_INTERACTION;    break;
 
                 default:
                     fprintf(stderr, "unknown parameter: %c\n", *char_ptr);
@@ -1107,6 +1110,7 @@ void print_help_msg()
     printf("    -l manipulate local branch\n");
     printf("    -d delete branch\n");
     printf("    -u update branch info\n");
+    printf("    -m merge selected branch into current branch\n");
     printf("    -h show this help message\n");
 }
 
@@ -1190,6 +1194,34 @@ void command_line_update_branch_info(size_t object_set)
         command_execute("git remote update origin --prune", NULL);
 }
 
+void command_line_merge_branch(char *merge_from)
+{
+    command_execute("git merge ", merge_from, NULL);
+}
+
+void merge_branch_interaction(BranchInfo *local_branch)
+{
+    local_branch->drop_operation = false;
+    local_branch->interaction_object = LOCAL_BRANCH_INTERACTION;
+
+    char *choice_branch_name = choice_interactive(local_branch);
+
+    if(local_branch->drop_operation)
+        goto exit;
+    else
+        goto commit_operation;
+
+
+commit_operation:
+
+    printf("merge operation.\n");
+
+    command_line_merge_branch(get_real_branch_name(choice_branch_name));
+
+exit:
+    return;
+}
+
 void run_interaction(size_t object_set, size_t feature_set, char **manipulate_target)
 {
     if(!is_parameter_legal(object_set, feature_set))
@@ -1212,9 +1244,9 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
     if(!object_set)
         object_set |= LOCAL_BRANCH_INTERACTION;
 
+    char *last_input_branch = get_last_input_branch(manipulate_target);
     if(!feature_set)
     {
-        char *last_input_branch = get_last_input_branch(manipulate_target);
         for(size_t i=0; i<64; i++)
         {
             if(!object_set)
@@ -1266,6 +1298,14 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
                 break;
             case UPDATE_BRANCH_INFO:
                 command_line_update_branch_info(object_set);
+                break;
+            case MERGE_BRANCH_INTERACTION:
+                if(last_input_branch)
+                {
+                    command_line_merge_branch(last_input_branch);
+                    break;
+                }
+                merge_branch_interaction(&local_branch);
                 break;
             default:
                 fprintf(stderr, "unknown mark\n");
