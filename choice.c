@@ -1141,6 +1141,7 @@ void print_help_msg()
     printf("    -l manipulate local branch\n");
     printf("    -d delete branch\n");
     printf("    -u update branch info\n");
+    printf("    -m merge input branch to current branch\n");
     printf("    -h show this help message\n");
 }
 
@@ -1312,8 +1313,8 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
                     command_line_merge_branch(last_input_branch);
                     break;
                 }
-                local_branch_interaction(&local_branch);
-                break;
+                fprintf(stderr, "parameter missing: option -m just for command line and need parameter\n");
+                goto exit;
             default:
                 fprintf(stderr, "unknown mark\n");
                 break;
