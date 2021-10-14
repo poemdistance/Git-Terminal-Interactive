@@ -9,11 +9,12 @@
 #include <stdint.h>
 
 #define ROW_NUM 20
-#define COL_NUM 64
+#define COL_NUM 80
 #define WIN_MENU_DIFF_ROW 6
 
 #define DELETE_LOCAL_BRANCH_BIT     (1<<0)
 #define DELETE_REMOTE_BRANCH_BIT    (1<<1)
+#define MERGE_LOCAL_BRANCH_BIT      (1<<2)
 
 #define LOCAL_BRANCH_INTERACTION    (1<<0)
 #define REMOTE_BRANCH_INTERACTION   (1<<1)
@@ -108,15 +109,16 @@ void refresh_menu(WINDOW *win, MENU *menu, BranchInfo *branch_info)
         print_in_middle(win, 1, 0, COL_NUM, "Git Branch Tools (Remote)", COLOR_PAIR(0));
 
     mvwhline(win, 2, 1, ACS_HLINE, COL_NUM-2);
-    mvprintw(17, 90, "o: checkout to selected branch");
-    mvprintw(18, 90, "d: delete selected branch from local");
-    mvprintw(19, 90, "r: remove selected branch from remote");
-    mvprintw(20, 90, "k: key up");
-    mvprintw(21, 90, "j: key down");
-    mvprintw(22, 90, "a: drop/abort all operation and exit");
-    mvprintw(23, 90, "g: jump to fist branch");
-    mvprintw(24, 90, "G: jump to last branch");
-    mvprintw(25, 90, "q/enter: exit and commit all operation");
+    mvprintw(26, 110, "o: checkout to selected branch");
+    mvprintw(27, 110, "d: delete selected branch from local");
+    mvprintw(28, 110, "r: remove selected branch from remote");
+    mvprintw(29, 110, "m: merge selected branch into current branch");
+    mvprintw(30, 110, "k: key up");
+    mvprintw(31, 110, "j: key down");
+    mvprintw(32, 110, "a: drop/abort all operation and exit");
+    mvprintw(33, 110, "g: jump to fist branch");
+    mvprintw(34, 110, "G: jump to last branch");
+    mvprintw(35, 110, "q/enter: exit and commit all operation");
 
     refresh();
 
@@ -169,6 +171,7 @@ void set_branch_hint(MENU *menu,
     char *del_local_hint = " [del-local]";
     char *del_remote_hint = " [del-remote]";
     char *remote_hint = " [remote]";
+    char *merge_hint = " [merge]";
 
     size_t base_size = strlen(branch)+1;
     strcpy(*branch_hint, branch);
@@ -204,6 +207,18 @@ void set_branch_hint(MENU *menu,
         concat_extra_msg(
                 branch_hint,
                 del_remote_hint,
+                base_size,
+                branch_hint_extra_size,
+                new_extra_hint_size);
+    }
+
+    if(operation_mark & MERGE_LOCAL_BRANCH_BIT)
+    {
+        new_extra_hint_size += strlen(merge_hint);
+
+        concat_extra_msg(
+                branch_hint,
+                merge_hint,
                 base_size,
                 branch_hint_extra_size,
                 new_extra_hint_size);
@@ -263,7 +278,7 @@ char *choice_interactive( BranchInfo *branch_info)
     menu = new_menu((ITEM **)items);
 
     /* newwin(int nlines, int ncols, int begin_y, int begin_x)*/
-    win = newwin(ROW_NUM, COL_NUM, 5, 12);
+    win = newwin(ROW_NUM, COL_NUM, 10, 20);
     keypad(win, TRUE);
     refresh_menu(win, menu, branch_info);
     set_current_item(menu, items[branch_info->current_branch_index]);
@@ -297,7 +312,10 @@ char *choice_interactive( BranchInfo *branch_info)
                 menu_driver(menu, REQ_FIRST_ITEM);
                 break;
             case 'm':
-                menu_driver(menu, REQ_SCR_DPAGE);
+                need_to_refresh_menu = true;
+                bit_reverse(
+                        &(branch_info->branch_operation_mark[choice]),
+                        MERGE_LOCAL_BRANCH_BIT);
                 break;
             case 'n':
                 menu_driver(menu, REQ_SCR_UPAGE);
@@ -922,6 +940,19 @@ void switch_branch(BranchInfo *branch_info, char *choice_branch_name)
     command_execute("git checkout ", real_branch_name, NULL);
 }
 
+void merge_branch(BranchInfo *branch_info)
+{
+    char *branch_name = NULL;
+    for(size_t i=0; i<branch_info->branch_count; i++)
+    {
+        if(branch_info->branch_operation_mark[i] & MERGE_LOCAL_BRANCH_BIT)
+        {
+            branch_name = get_real_branch_name(branch_info->branch_index[i]);
+            command_execute("git merge ", branch_name, NULL);
+        }
+    }
+}
+
 void remote_branch_interation(BranchInfo *remote_branch)
 {
     remote_branch->interaction_object = REMOTE_BRANCH_INTERACTION;
@@ -960,7 +991,7 @@ commit_operation:
     printf("commit operation.\n");
 
     switch_branch(local_branch, choice_branch_name);
-
+    merge_branch(local_branch);
     interactive_delete_branch(local_branch);
 
 exit:
@@ -1110,7 +1141,6 @@ void print_help_msg()
     printf("    -l manipulate local branch\n");
     printf("    -d delete branch\n");
     printf("    -u update branch info\n");
-    printf("    -m merge selected branch into current branch\n");
     printf("    -h show this help message\n");
 }
 
@@ -1199,29 +1229,6 @@ void command_line_merge_branch(char *merge_from)
     command_execute("git merge ", merge_from, NULL);
 }
 
-void merge_branch_interaction(BranchInfo *local_branch)
-{
-    local_branch->drop_operation = false;
-    local_branch->interaction_object = LOCAL_BRANCH_INTERACTION;
-
-    char *choice_branch_name = choice_interactive(local_branch);
-
-    if(local_branch->drop_operation)
-        goto exit;
-    else
-        goto commit_operation;
-
-
-commit_operation:
-
-    printf("merge operation.\n");
-
-    command_line_merge_branch(get_real_branch_name(choice_branch_name));
-
-exit:
-    return;
-}
-
 void run_interaction(size_t object_set, size_t feature_set, char **manipulate_target)
 {
     if(!is_parameter_legal(object_set, feature_set))
@@ -1305,7 +1312,7 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
                     command_line_merge_branch(last_input_branch);
                     break;
                 }
-                merge_branch_interaction(&local_branch);
+                local_branch_interaction(&local_branch);
                 break;
             default:
                 fprintf(stderr, "unknown mark\n");
