@@ -22,7 +22,7 @@
 #define DELETE_BRANCH_INTERACTION   (1<<1)
 #define UPDATE_BRANCH_INFO          (1<<2)
 
-#define ARGUMENT_FIRST        (1<<0)
+#define PARAMETER_FIRST       (1<<0)
 #define OPTION_FRIST          (1<<1)
 
 #define BRANCH_EXTRA_HINT_SIZE (1024)
@@ -1014,9 +1014,11 @@ size_t parse_input_parameters(
     if(argc <= 1)
         return 0;
 
-    format = ARGUMENT_FIRST;
+    /* for command: ./choice -r branch_name
+     * -r is an option, branch_name is a parameter*/
+    format = OPTION_FRIST;
     if(argv[1][0] != '-')
-        format = OPTION_FRIST;
+        format = PARAMETER_FIRST;
 
     /* calculate options count*/
     size_t option_count = 0;
@@ -1054,9 +1056,9 @@ size_t parse_input_parameters(
     {
         char_ptr = argv[i];
 
-        if(i>=3 && format==OPTION_FRIST && *char_ptr!='-' && argv[i-1][0] == '-')
+        if(i>=3 && format==OPTION_FRIST && *char_ptr=='-' && argv[i-1][0] != '-')
             set_index++;
-        if(i>=3 && format==ARGUMENT_FIRST && *char_ptr=='-' && argv[i-1][0] != '-')
+        if(i>=3 && format==PARAMETER_FIRST && *char_ptr!='-' && argv[i-1][0] == '-')
             set_index++;
 
         /* extract parameter*/
