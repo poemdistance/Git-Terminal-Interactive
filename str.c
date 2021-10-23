@@ -153,17 +153,17 @@ char *str_outside_replace(char *str, char *target, char *replace)
     return new;
 }
 
-int main()
-{
-    char *new = str_outside_replace("月がきれいてす", "てす", "てすね");
-    if(new)
-    {
-        printf("outside replace new string: %s\n", new);
-        free(new);
-    }
+/* int main() */
+/* { */
+/*     char *new = str_outside_replace("月がきれいてす", "てす", "てすね"); */
+/*     if(new) */
+/*     { */
+/*         printf("outside replace new string: %s\n", new); */
+/*         free(new); */
+/*     } */
 
-    char buf[] = "あなたのことがだいすきてす";
-    printf("inside replace new string: %s\n", str_inside_replace(buf, "だいすき", "すき"));
+/*     char buf[] = "あなたのことがだいすきてす"; */
+/*     printf("inside replace new string: %s\n", str_inside_replace(buf, "だいすき", "すき")); */
 
-    return 0;
-}
+/*     return 0; */
+/* } */
