@@ -17,4 +17,12 @@ char *str_outside_replace(char *str, char *target, char *replace);
 /* replace 'target' with 'replace' inside the 'str'*/
 char *str_inside_replace(char *str, char *target, char *replace);
 
+/* find the substring in 'str'.
+ * return 'target' sting address if found, otherwise return NULL*/
+char *find_substr(char *str, char *target);
+
+/* only check the first 'len' characters and find the substring in 'str'.
+ * return 'target' sting address if found, otherwise return NULL*/
+char *find_substr_l(char *str, size_t len, char *target);
+
 #endif

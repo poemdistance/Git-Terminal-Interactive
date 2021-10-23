@@ -153,6 +153,40 @@ char *str_outside_replace(char *str, char *target, char *replace)
     return new;
 }
 
+/* only check the first 'len' characters and find the substring in 'str'.
+ * return 'target' sting address if found, otherwise return NULL*/
+char *find_substr_l(char *str, size_t len, char *target)
+{
+    char *s = str;
+    char *t = target;
+    while(*s && s-str < len)
+    {
+        if(*s == *target)
+        {
+            while(*s && *t && *s++ == *t++);
+
+            if(*t == '\0' && *(s-1) == *(t-1))
+                return s-(t-target);
+
+            /* not found target string then back to 
+             * previous position to prepare next ccomparison*/
+            s = s - (t-target);
+            t = target;
+        }
+
+        s++;
+    }
+
+    return NULL;
+}
+
+/* find the substring in 'str'.
+ * return 'target' sting address if found, otherwise return NULL*/
+char *find_substr(char *str, char *target)
+{
+    return strstr(str, target);
+}
+
 /* int main() */
 /* { */
 /*     char *new = str_outside_replace("月がきれいてす", "てす", "てすね"); */
@@ -164,6 +198,9 @@ char *str_outside_replace(char *str, char *target, char *replace)
 
 /*     char buf[] = "あなたのことがだいすきてす"; */
 /*     printf("inside replace new string: %s\n", str_inside_replace(buf, "だいすき", "すき")); */
+
+/*     char *find = find_substr_l("i llllove you ", 9, "love"); */
+/*     printf("search result: >%s<\n", find); */
 
 /*     return 0; */
 /* } */
