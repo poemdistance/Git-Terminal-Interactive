@@ -7,3 +7,7 @@ a.out
 test.c
 .vscode
 valgrind.check
+.cache
+waterLog
+str
+tmp
