@@ -24,7 +24,63 @@ char *remove_trailing_slash_character(char *str)
     return str;
 }
 
-char *str_replace(char *str, char *target, char *replace)
+/* do not pass const string to 'str', or program will crash while modifying it*/
+char *str_inside_replace(char *str, char *target, char *replace)
+{
+    if(!str || !target || !replace)
+        return str;
+
+    if(*target == '\0' || *str == '\0')
+        return str;
+
+    /* length of target string more than source string, it's impossible find the target string*/
+    size_t target_len = strlen(target);
+    size_t replace_len = strlen(replace);
+    size_t src_str_len = strlen(str);
+    if(target_len > src_str_len)
+        return str;
+
+    if(replace_len > target_len)
+    {
+        fprintf(stderr, "replace string cannot larger than target string\n");
+        exit(1);
+    }
+
+    char *left = str;
+    char *right = str;
+    char *t = target;
+    size_t compare_len = 0;
+    while(*right)
+    {
+        if(*right == *t)
+        {
+            while(*right && *t && (*right++ == *t++));
+
+            /* only case match the 'target' string in 'str'*/
+            if(*t == '\0' && *(right-1) == *(t-1))
+            {
+                strncpy(left, replace, replace_len);
+                left += replace_len;
+                t = target;
+                continue;
+            }
+
+            compare_len = t - target;
+            strncpy(left, right-compare_len, compare_len);
+            t = target;
+            left += compare_len;
+            continue;
+        }
+
+        *left++ = *right++;
+    }
+
+    *left = '\0';
+
+    return str;
+}
+
+char *str_outside_replace(char *str, char *target, char *replace)
 {
     if(!str || !target || !replace)
         return str;
@@ -62,7 +118,6 @@ char *str_replace(char *str, char *target, char *replace)
                     max_new_str_len = max_new_str_len * 2;
                     new = realloc(new, max_new_str_len);
                     n = new + new_str_len;
-                    printf("realloc: %ld\n", max_new_str_len);
                 }
 
                 strcpy(n, replace);
@@ -81,7 +136,6 @@ char *str_replace(char *str, char *target, char *replace)
                 max_new_str_len = max_new_str_len * 2;
                 new = realloc(new, max_new_str_len);
                 n = new + compare_len;
-                printf("realloc: %ld\n", max_new_str_len);
             }
             strncat(new, s-compare_len, compare_len);
             new_str_len += compare_len;
@@ -99,14 +153,17 @@ char *str_replace(char *str, char *target, char *replace)
     return new;
 }
 
-/* int main() */
-/* { */
-/*     char *new = str_replace("test", "es", "-------"); */
-/*     if(new) */
-/*     { */
-/*         printf("new string: %s\n", new); */
-/*         free(new); */
-/*     } */
+int main()
+{
+    char *new = str_outside_replace("月がきれいてす", "てす", "てすね");
+    if(new)
+    {
+        printf("outside replace new string: %s\n", new);
+        free(new);
+    }
 
-/*     return 0; */
-/* } */
+    char buf[] = "あなたのことがだいすきてす";
+    printf("inside replace new string: %s\n", str_inside_replace(buf, "だいすき", "すき"));
+
+    return 0;
+}

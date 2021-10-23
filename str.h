@@ -12,6 +12,9 @@ char *remove_trailing_slash_character(char *str);
 
 /* feature: finding the 'target' sting in 'str' and then replace it with 'replace',
  * return: return new string after processing, you should need to free it while its not null*/
-char *str_replace(char *str, char *target, char *replace);
+char *str_outside_replace(char *str, char *target, char *replace);
+
+/* replace 'target' with 'replace' inside the 'str'*/
+char *str_inside_replace(char *str, char *target, char *replace);
 
 #endif
