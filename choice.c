@@ -34,6 +34,7 @@
 #define DELETE_BRANCH_INTERACTION   (1<<1)
 #define UPDATE_BRANCH_INFO          (1<<2)
 #define MERGE_BRANCH_INTERACTION    (1<<3)
+#define VERBOSE_BRANCH_INFO         (1<<4)
 
 /* Option and parameter input style*/
 #define PARAMETER_FIRST       (1<<0)
@@ -1352,6 +1353,8 @@ size_t parse_input_parameters(
                     (*feature_set)[set_index] |= HELP_MSG;                    break;
                 case 'm':
                     (*feature_set)[set_index] |= MERGE_BRANCH_INTERACTION;    break;
+                case 'v':
+                    (*feature_set)[set_index] |= VERBOSE_BRANCH_INFO;         break;
 
                 default:
                     fprintf(stderr, "unknown parameter: %c\n", *char_ptr);
@@ -1374,8 +1377,10 @@ void print_help_msg()
     printf("Usage: \n");
     printf("    -r manipulate remote branch\n");
     printf("    -l manipulate local branch\n");
+    printf("    -p manipulate pull request branch\n");
     printf("    -d delete branch\n");
     printf("    -u update branch info\n");
+    printf("    -v print verbose of branch info\n");
     printf("    -m merge input branch to current branch\n");
     printf("    -h show this help message\n");
 }
@@ -1511,6 +1516,19 @@ void get_pull_request_branch_info(BranchInfo *branch_info)
         free(abs_cache_path);
 }
 
+void show_branch_verbose(size_t object_set)
+{
+    if(object_set & REMOTE_BRANCH_INTERACTION);
+
+
+    if(object_set & LOCAL_BRANCH_INTERACTION);
+
+
+    if(object_set & PULL_REQUEST_BRANCH_INTERACTION)
+        command_execute("cat ", PULL_REQUEST_BRANCH_CACHE_PATH, NULL);
+
+}
+
 void run_interaction(size_t object_set, size_t feature_set, char **manipulate_target)
 {
     if(!is_parameter_legal(object_set, feature_set))
@@ -1594,6 +1612,10 @@ void run_interaction(size_t object_set, size_t feature_set, char **manipulate_ta
             case UPDATE_BRANCH_INFO:
                 command_line_update_branch_info(object_set);
                 break;
+            case VERBOSE_BRANCH_INFO:
+                show_branch_verbose(object_set);
+                break;
+
             case MERGE_BRANCH_INTERACTION:
                 if(last_input_branch)
                 {
