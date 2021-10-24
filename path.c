@@ -64,8 +64,6 @@ char *absolute_path(char *path)
     if(!path)
         return path;
 
-    printf("input path: %s\n", path);
-
     char tmp_path[PATH_MAX] = { '\0' };
     char *abs_path = NULL;
     char *p = NULL;
@@ -101,8 +99,6 @@ char *absolute_path(char *path)
             strcat(abs_path, path);
             break;
     }
-
-    printf("abs_path: %s\n", abs_path);
 
     return abs_path;
 }
@@ -147,7 +143,7 @@ bool recursive_create_dir(char *path)
     struct stat st;
     if(lstat(path, &st) == 0)
     {
-        fprintf(stdout, "path: %s already exists\n", path);
+        /* fprintf(stdout, "path: %s already exists\n", path); */
         return true;
     }
 
@@ -161,7 +157,6 @@ bool recursive_create_dir(char *path)
     char *parent_path = get_parent_dir(dup_path);
     recursive_create_dir(parent_path);
 
-    printf("try to create dir: %s\n", path);
     if(mkdir(path, 0755) != 0)
     {
         fprintf(stderr, "create %s failed, errno: %s\n", path, strerror(errno));
