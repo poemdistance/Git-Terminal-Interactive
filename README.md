@@ -25,3 +25,12 @@
     ./chocide -dl test  # delete local branch 'test'
 
     ...
+
+
+### Links
+
+    https://docs.github.com/en/rest/reference/pulls#list-pull-requests
+
+    curl \
+      -H "Accept: application/vnd.github.v3+json" \
+      https://api.github.com/repos/octocat/hello-world/pulls
