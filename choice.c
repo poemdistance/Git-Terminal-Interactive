@@ -52,6 +52,8 @@
 #define BRANCH_LOCATION_REMOTE     (1<<0)
 #define BRANCH_LOCATION_LOCAL      (1<<1)
 
+#define PULL_REQUEST_BRANCH_CACHE_PATH "~/.cache/git-terminal-interactive/pull-request.cache"
+
 typedef struct BranchInfo {
     size_t interaction_object;
     size_t branch_count;
@@ -65,13 +67,6 @@ typedef struct BranchInfo {
     struct BranchInfo *local_branch;
     struct BranchInfo *remote_branch;
 } BranchInfo;
-
-char *home_dir()
-{
-    struct passwd *pw = getpwuid(getuid());
-    char *home_dir = pw->pw_dir;
-    return home_dir;
-}
 
 void *reallocz(void *addr, size_t old_size, size_t new_size)
 {
@@ -862,8 +857,6 @@ int parse_raw_output_of_git_branch(char *raw_buf, BranchInfo *branch_info)
 
 bool make_sure_exists_path(char *store_path)
 {
-    printf("make sure %s exists\n", store_path);
-
     if(!store_path || *store_path == '\0')
     {
         logger("cache path: %s is illegal\n", store_path);
@@ -897,7 +890,6 @@ bool make_sure_exists_path(char *store_path)
     if(p > dup_store_path)
         *(p+1) = '\0';
 
-    printf("recursive_create_dir: %s\n", dup_store_path);
     recursive_create_dir(dup_store_path);
 
     free(dup_store_path);
@@ -912,7 +904,6 @@ bool store_cache(char *store_path, char *buf)
     FILE *fp = NULL;
 
     abs_store_path = absolute_path(store_path);
-    printf("store cache: %s\n", abs_store_path);
     if(!make_sure_exists_path(abs_store_path))
         goto exit_function;
 
@@ -1463,6 +1454,19 @@ void command_line_delete_branch(
     }
 }
 
+void update_pull_request_branch_cache()
+{
+    char *raw_buf = NULL;
+
+    get_raw_output_from_file_stream(
+            popen("git ls-remote", "r"), pclose, &raw_buf);
+
+    store_cache(PULL_REQUEST_BRANCH_CACHE_PATH, raw_buf);
+
+    if(raw_buf)
+        free(raw_buf);
+}
+
 void command_line_update_branch_info(size_t object_set)
 {
     if(object_set & REMOTE_BRANCH_INTERACTION)
@@ -1470,6 +1474,9 @@ void command_line_update_branch_info(size_t object_set)
 
     if(object_set & LOCAL_BRANCH_INTERACTION)
         command_execute("git remote update origin --prune", NULL);
+
+    if(object_set & PULL_REQUEST_BRANCH_INTERACTION)
+        update_pull_request_branch_cache();
 }
 
 void command_line_merge_branch(char *merge_from)
@@ -1480,7 +1487,7 @@ void command_line_merge_branch(char *merge_from)
 void get_pull_request_branch_info(BranchInfo *branch_info)
 {
     struct stat st;
-    char *pull_request_cache = ".cache/git-terminal-interactive/pull-request.cache";
+    char *pull_request_cache = PULL_REQUEST_BRANCH_CACHE_PATH;
 
     char *abs_cache_path = absolute_path(pull_request_cache);
 
