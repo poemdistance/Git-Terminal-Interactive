@@ -1,6 +1,16 @@
 #include "path.h"
 #include "str.h"
 
+
+/* return result is stored in static area, you don't need to free it
+ * but you should be care of overwriting issue in subsequent calling*/
+char *home_dir()
+{
+    struct passwd *pw = getpwuid(getuid());
+    char *home_dir = pw->pw_dir;
+    return home_dir;
+}
+
 char *skip_relative_path(char *path)
 {
     if(!path)
@@ -47,6 +57,8 @@ char *skip_relative_path(char *path)
     return NULL;
 }
 
+/* get the absolute path of giving relative path, store the result in calloc memory chunk.
+ * if return result is not null, you should free it yourself*/
 char *absolute_path(char *path)
 {
     if(!path)
@@ -56,7 +68,7 @@ char *absolute_path(char *path)
 
     char tmp_path[PATH_MAX] = { '\0' };
     char *abs_path = NULL;
-    char *p2 = NULL;
+    char *p = NULL;
 
     switch(*path)
     {
@@ -66,11 +78,17 @@ char *absolute_path(char *path)
             break;
         case '.':
             abs_path = calloc(sizeof(char), PATH_MAX);
-            p2 = skip_relative_path(path);
-            strncpy(tmp_path, path, p2-path);
+            p = skip_relative_path(path);
+            strncpy(tmp_path, path, p-path);
             realpath(tmp_path, abs_path);
             strcat(abs_path, "/");
-            strcat(abs_path, p2);
+            strcat(abs_path, p);
+            break;
+        case '~':
+            p = home_dir();
+            abs_path = calloc(sizeof(char), strlen(p) + strlen(path));
+            strcpy(abs_path, p);
+            strcat(abs_path, path+1);
             break;
         default:
             abs_path = calloc(sizeof(char), PATH_MAX);
