@@ -923,6 +923,12 @@ bool create_branch_if_not_exists(BranchInfo *branch_info, char *branch_name)
 
     command_execute("git checkout -b ", branch_name, NULL);
 
+    if(branch_info->interaction_object & REMOTE_BRANCH_INTERACTION)
+    {
+        command_execute("git branch --set-upstream-to=origin/", branch_name, " ", branch_name, NULL);
+        command_execute("git pull", NULL);
+    }
+
     return true;
 }
 
