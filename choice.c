@@ -912,9 +912,9 @@ void interactive_delete_branch(BranchInfo *branch_info)
 bool create_branch_if_not_exists(BranchInfo *branch_info, char *branch_name)
 {
     char *real_branch_name = NULL;
-    for(size_t i=0; i<branch_info->branch_count; i++)
+    for(size_t i=0; i<branch_info->local_branch->branch_count; i++)
     {
-        real_branch_name = get_real_branch_name(branch_info->branch_index[i]);
+        real_branch_name = get_real_branch_name(branch_info->local_branch->branch_index[i]);
         if(strcmp(branch_name, real_branch_name) == 0)
             return false;
     }
@@ -922,6 +922,12 @@ bool create_branch_if_not_exists(BranchInfo *branch_info, char *branch_name)
     printf("not found branch: [%s] creating...\n", branch_name);
 
     command_execute("git checkout -b ", branch_name, NULL);
+
+    if(branch_info->interaction_object & REMOTE_BRANCH_INTERACTION)
+    {
+        command_execute("git branch --set-upstream-to=origin/", branch_name, " ", branch_name, NULL);
+        command_execute("git pull origin ", branch_name, " --rebase", NULL);
+    }
 
     return true;
 }
@@ -967,7 +973,7 @@ commit_operation:
 
     interactive_delete_branch(remote_branch);
 
-    switch_branch(remote_branch->local_branch, choice_branch_name);
+    switch_branch(remote_branch, choice_branch_name);
 
 exit:
     return;
