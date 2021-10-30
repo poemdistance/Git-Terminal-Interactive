@@ -7,3 +7,7 @@ a.out
 test.c
 .vscode
 valgrind.check
+json
+str
+tmp
+waterLog
